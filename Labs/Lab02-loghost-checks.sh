@@ -21,10 +21,10 @@ sudo ss -tulpn|grep syslogd
 sudo ufw status
 echo ===================
 
-echo openwrt logs being captured on loghost
+echo logs being captured on loghost
 echo ===================
 echo -n "host appearances in /var/log/syslog: "
-for h in webhost nmshost proxyhost mailhost; do echo -n "$h "; grep $h /var/log/syslog|wc -l; done
+for h in webhost nmshost proxyhost mailhost dbhost pfsense; do echo -n "$h $(sudo grep -aicw $h /var/log/syslog)"; done
 echo "distinct hostnames in SystemEvents table: "
 sudo mysql -u root <<< "select distinct FromHost from Syslog.SystemEvents;"
 echo ===================
