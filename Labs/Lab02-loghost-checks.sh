@@ -26,5 +26,5 @@ echo ===================
 echo -n "host appearances in /var/log/syslog: "
 for h in webhost nmshost proxyhost mailhost dbhost pfsense; do echo -n "$h $(sudo grep -aicw $h /var/log/syslog)"; done
 echo "distinct hostnames in SystemEvents table: "
-sudo mysql -u root <<< "select distinct FromHost from Syslog.SystemEvents;"
+sudo mysql -u root <<< "select distinct FromHost, count(*) from Syslog.SystemEvents;"
 echo ===================
