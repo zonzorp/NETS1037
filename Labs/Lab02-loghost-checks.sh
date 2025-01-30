@@ -4,8 +4,6 @@
 echo Host config checks
 echo ===================
 echo $(hostname) has IP $(hostname -I)
-echo whoami
-whoami
 echo ===================
 
 echo rsyslog/mysql checks
@@ -23,8 +21,7 @@ echo ===================
 
 echo logs being captured on loghost
 echo ===================
-echo -n "host appearances in /var/log/syslog: "
-for h in webhost nmshost proxyhost mailhost dbhost pfsense; do echo -n "$h $(sudo grep -aicw $h /var/log/syslog)"; done
+for h in webhost nmshost proxyhost mailhost pfsense; do echo "$h $(sudo grep -aicw $h /var/log/syslog)"; done
 echo "distinct hostnames in SystemEvents table: "
 sudo mysql -u root <<< "select distinct FromHost, count(*) from Syslog.SystemEvents group by FromHost;"
 echo ===================
