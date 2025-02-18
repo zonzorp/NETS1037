@@ -6,9 +6,9 @@ source /etc/os-release
 
 if [ ! -f $(dirname "$0")/comp2137-funcs.sh ]; then
   echo "Retrieving script library file"
-  if ! wget -q -O $(dirname "$0")/comp2137-funcs.sh https://zonzorp.github.io/COMP2137/comp2137-funcs.sh; then
+  if ! wget -q -O $(dirname "$0")/comp2137-funcs.sh https://github.com/zonzorp/NETS1037/raw/main/comp2137-funcs.sh; then
     cat <<EOF
-You need the comp2137-funcs.sh file from https://zonzorp.github.io/COMP2137/ in order to use this script. Automatic retrieval of the file has failed. Are we online?
+You need https://github.com/zonzorp/NETS1037/raw/main/comp2137-funcs.sh in order to use this script. Automatic retrieval of the file has failed. Are we online?
 EOF
     exit 1
   fi
