@@ -310,7 +310,8 @@ for (( n=0;n<numcontainers - numexisting;n++ )); do
     echoverbose "Configuring $container networking"
     incus network attach $mgmtintf "$container" eth1
     echoverbose "Waiting for $container to complete startup"
-    while [ "$(incus info "$container" | grep '^Status: ')" != "Status: RUNNING" ]; do sleep 2; done
+#    while [ "$(incus info "$container" | grep '^Status: ')" != "Status: RUNNING" ]; do sleep 2; done
+    while ! incus list "$container" | grep -q eth1; do sleep 2; done
     netplanfile=$(incus exec "$container" ls /etc/netplan)
     incus exec "$container" -- sh -c "cat > /etc/netplan/$netplanfile <<EOF
 network:
@@ -401,12 +402,54 @@ ff02::2		ip6-allrouters
 172.16.1.9 mailhost-mgmt
 
 ' >/etc/hosts"
+        case "$container" in
+            loghost )
+                # doing loghost specific setup
+                incus exec "$container" -- apt-get -qq install mysql-server
+                incus exec "$container" -- apt-get -qq install rsyslog-mysql
+                incus exec "$container" -- sh -c 'sed -i -e s/#module(load="imudp")/module(load="imudp")/ -e s/#input(type="imudp"/input(type="imudp"/ /etc/rsyslog.conf'
+                incus exec "$container" -- systemctl restart rsyslog
+                ;;
+            mailhost )
+                # doing mailhost specific setup
+                for configfile in etc-rsyslog.d-loghost.conf; do
+                    file="$container"-"$configfile"
+                    if [ ! -f $(dirname "$0")/"$file" ]; then
+                        echoverbose "Retrieving $container $configfile config file"
+                        if ! wget -q -O $(dirname "$0")/"$file" "$githubrepoURL"/"$file"; then
+                            cat <<EOF
+You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
+EOF
+                            exit 1
+                        fi
+                    fi
+                done
+                incus file push $(dirname "$0")/etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
+                incus exec "$container" -- apt-get -qq install postfix dovecot mailutils apache2 roundcube
+                ;;
+            webhost )
+                # doing webhost specific setup
+                incus exec "$container" -- apt-get -qq install apache2
+                ;;
+            nmshost )
+                # doing nmshost specific setup
+                ;;
+            proxyhost )
+                # doing proxyhost specific setup
+                incus exec "$container" -- apt-get -qq install squid
+                ;;
+            dbhost )
+                # doing dbhost specific setup
+                incus exec "$container" -- apt-get -qq install mysql-server
+                ;;
+        esac
     fi
+    
     echoverbose "Restarting $container"
     incus restart "$container"
     echo "Waiting for $container restart"
-    while [ "$(incus info "$container" | grep '^Status: ')" != "Status: RUNNING" ]; do sleep 2; done
-    
+#    while [ "$(incus info "$container" | grep '^Status: ')" != "Status: RUNNING" ]; do sleep 2; done
+    while ! incus list "$container" | grep -q eth1; do sleep 2; done
     echoverbose "Adding $container to /etc/hosts file if necessary"
     sudo sed -i -e "/ $container\$/d" -e "/ $container-mgmt\$/d" /etc/hosts
     sudo sed -i -e '$a'"$containerlanip $container" -e '$a'"$containermgmtip $container-mgmt" /etc/hosts
