@@ -310,8 +310,8 @@ for (( n=0;n<numcontainers - numexisting;n++ )); do
     echoverbose "Configuring $container networking"
     incus network attach $mgmtintf "$container" eth1
     echoverbose "Waiting for $container to complete startup"
-#    while [ "$(incus info "$container" | grep '^Status: ')" != "Status: RUNNING" ]; do sleep 2; done
-    while ! incus list "$container" | grep -q eth1; do sleep 2; done
+    while [ "$(incus info "$container" | grep '^Status: ')" != "Status: RUNNING" ]; do sleep 2; done
+    
     netplanfile=$(incus exec "$container" ls /etc/netplan)
     incus exec "$container" -- sh -c "cat > /etc/netplan/$netplanfile <<EOF
 network:
@@ -332,6 +332,7 @@ EOF
     incus exec "$container" -- bash -c '[ -d /etc/cloud ] && echo "network: {config: disabled}" > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg'
     incus exec "$container" chmod 600 /etc/netplan/"$netplanfile"
     incus exec "$container" netplan apply
+    while ! incus list "$container" | grep -q eth1; do sleep 2; done
     incus exec "$container" -- sh -c 'sed -i -e "/[[:space:]]'$container'\$/d" -e "/[[:space:]]'$container'-mgmt\$/d" -e "/[[:space:]]openwrt\$/d" -e "/[[:space:]]openwrt-mgmt\$/d" /etc/hosts'
     incus exec "$container" -- sh -c "echo '
 $containerlanip $container
@@ -404,7 +405,7 @@ ff02::2		ip6-allrouters
 ' >/etc/hosts"
         case "$container" in
             loghost )
-                # doing loghost specific setup
+                echoverbose "doing loghost specific setup"
                 incus exec "$container" -- apt-get -qq install mysql-server
                 incus exec "$container" -- apt-get -qq install rsyslog-mysql
                 incus exec "$container" -- sh -c 'sed -i -e s/#module(load="imudp")/module(load="imudp")/ -e s/#input(type="imudp"/input(type="imudp"/ /etc/rsyslog.conf'
@@ -412,6 +413,7 @@ ff02::2		ip6-allrouters
                 ;;
             mailhost )
                 # doing mailhost specific setup
+                # loghost rsyslog setup
                 for configfile in etc-rsyslog.d-loghost.conf; do
                     file="$container"-"$configfile"
                     if [ ! -f $(dirname "$0")/"$file" ]; then
@@ -425,20 +427,77 @@ EOF
                     fi
                 done
                 incus file push $(dirname "$0")/etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
+                # software installs
                 incus exec "$container" -- apt-get -qq install postfix dovecot mailutils apache2 roundcube
                 ;;
             webhost )
+                # loghost rsyslog setup
+                for configfile in etc-rsyslog.d-loghost.conf; do
+                    file="$container"-"$configfile"
+                    if [ ! -f $(dirname "$0")/"$file" ]; then
+                        echoverbose "Retrieving $container $configfile config file"
+                        if ! wget -q -O $(dirname "$0")/"$file" "$githubrepoURL"/"$file"; then
+                            cat <<EOF
+You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
+EOF
+                            exit 1
+                        fi
+                    fi
+                done
+                incus file push $(dirname "$0")/etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
                 # doing webhost specific setup
                 incus exec "$container" -- apt-get -qq install apache2
                 ;;
             nmshost )
+                # loghost rsyslog setup
+                for configfile in etc-rsyslog.d-loghost.conf; do
+                    file="$container"-"$configfile"
+                    if [ ! -f $(dirname "$0")/"$file" ]; then
+                        echoverbose "Retrieving $container $configfile config file"
+                        if ! wget -q -O $(dirname "$0")/"$file" "$githubrepoURL"/"$file"; then
+                            cat <<EOF
+You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
+EOF
+                            exit 1
+                        fi
+                    fi
+                done
+                incus file push $(dirname "$0")/etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
                 # doing nmshost specific setup
                 ;;
             proxyhost )
+                # loghost rsyslog setup
+                for configfile in etc-rsyslog.d-loghost.conf; do
+                    file="$container"-"$configfile"
+                    if [ ! -f $(dirname "$0")/"$file" ]; then
+                        echoverbose "Retrieving $container $configfile config file"
+                        if ! wget -q -O $(dirname "$0")/"$file" "$githubrepoURL"/"$file"; then
+                            cat <<EOF
+You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
+EOF
+                            exit 1
+                        fi
+                    fi
+                done
+                incus file push $(dirname "$0")/etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
                 # doing proxyhost specific setup
                 incus exec "$container" -- apt-get -qq install squid
                 ;;
             dbhost )
+                # loghost rsyslog setup
+                for configfile in etc-rsyslog.d-loghost.conf; do
+                    file="$container"-"$configfile"
+                    if [ ! -f $(dirname "$0")/"$file" ]; then
+                        echoverbose "Retrieving $container $configfile config file"
+                        if ! wget -q -O $(dirname "$0")/"$file" "$githubrepoURL"/"$file"; then
+                            cat <<EOF
+You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
+EOF
+                            exit 1
+                        fi
+                    fi
+                done
+                incus file push $(dirname "$0")/etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
                 # doing dbhost specific setup
                 incus exec "$container" -- apt-get -qq install mysql-server
                 ;;
