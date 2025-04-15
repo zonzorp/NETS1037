@@ -4,20 +4,8 @@
 
 source /etc/os-release
 
-if [ ! -f $(dirname "$0")/comp2137-funcs.sh ]; then
-  echo "Retrieving script library file"
-  if ! wget -q -O $(dirname "$0")/comp2137-funcs.sh https://github.com/zonzorp/NETS1037/raw/main/comp2137-funcs.sh; then
-    cat <<EOF
-You need https://github.com/zonzorp/NETS1037/raw/main/comp2137-funcs.sh in order to use this script. Automatic retrieval of the file has failed. Are we online?
-EOF
-    exit 1
-  fi
-fi
-source $(dirname "$0")/comp2137-funcs.sh
-
-sudo-check
-
-snap list lxd 2>/dev/null && error-exit "This script is not designed to run with lxd, use a VM which has never had any containers yet and snap remove lxd"
+githubrepo=https://github.com/zonzorp/NETS1037
+githubrepoURL="$githubrepo"/raw/main
 
 lannetnum="192.168.16"
 mgmtnetnum="172.16.1"
@@ -30,6 +18,21 @@ startinghostnum=241
 remoteadmin="remoteadmin"
 numcontainers=1
 verbose=false
+
+if [ ! -f $(dirname "$0")/comp2137-funcs.sh ]; then
+  echo "Retrieving script library file"
+  if ! wget -q -O $(dirname "$0")/comp2137-funcs.sh "$githubrepoURL"/comp2137-funcs.sh; then
+    cat <<EOF
+You need the comp2137-funcs.sh file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
+EOF
+    exit 1
+  fi
+fi
+source $(dirname "$0")/comp2137-funcs.sh
+
+sudo-check
+
+snap list lxd 2>/dev/null && error-exit "This script is not designed to run with lxd, use a VM which has never had any containers yet and snap remove lxd"
 
 # save command for re-execution if necessary
 commandline="$0 $@"
@@ -76,6 +79,7 @@ verbose:       $verbose
         --prefix )
             if [ -z "$2" ]; then
                 error-exit "Need a hostname prefix for the --prefix option"
+ # in
             else
                 prefix="$2"
                 shift
@@ -228,36 +232,28 @@ sudo sed -i -e '/^incus-bridge /d' -e '$a'"incus-bridge $bridgeintfnetnum"\
 
 ##create the router container if necessary
 if ! incus info openwrt >&/dev/null ; then
+    for openwrtfile in network dhcp system; do
+        configfile=openwrt-etc-config-"$openwrtfile"
+        if [ ! -f $(dirname "$0")/"$configfile" ]; then
+            echoverbose "Retrieving openwrt $openwrtfile config file"
+            if ! wget -q -O $(dirname "$0")/"$configfile" "$githubrepoURL"/"$configfile"; then
+                cat <<EOF
+You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
+EOF
+                exit 1
+            fi
+        fi
+    done
     if ! incus launch images:openwrt/23.05 openwrt -n "$bridgeintf"; then
         error-exit "Failed to create openwrt container!"
     fi
     while [ "$(incus info openwrt | grep '^Status: ')" != "Status: RUNNING" ]; do sleep 2; done
     incus network attach $lanintf openwrt eth1
     incus network attach $mgmtintf openwrt eth2
-    
-    incus exec openwrt -- sh -c "echo '
-config device
-    option name eth1
-
-config interface lan
-    option device eth1
-    option proto static
-    option ipaddr $lannetnum.2
-    option netmask 255.255.255.0
-    
-config device
-    option name eth2
-
-config interface private
-    option device eth2
-    option proto static
-    option ipaddr $mgmtnetnum.2
-    option netmask 255.255.255.0
-
-' >>/etc/config/network"
-    incus exec openwrt -- sed -i "/config dnsmasq/a\        list address '/hostvm.home.arpa/192.168.16.1'\n        list address '/hostvm-mgmt.home.arpa/172.16.1.1'\n        list address '/openwrt.home.arpa/192.168.16.2'\n        list address '/openwrt-mgmt.home.arpa/172.16.1.2'\n        list address '/loghost.home.arpa/192.168.16.4'\n        list address '/loghost-mgmt.home.arpa/172.16.1.4'\n        list address '/webhost.home.arpa/192.168.16.5'\n        list address '/webhost-mgmt.home.arpa/172.16.1.5'\n        list address '/nmshost.home.arpa/192.168.16.6'\n        list address '/nmshost-mgmt.home.arpa/172.16.1.6'\n        list address '/proxyhost.home.arpa/192.168.16.7'\n        list address '/proxyhost-mgmt.home.arpa/172.16.1.7'\n        list address '/dbhost.home.arpa/192.168.16.8'\n       list address '/dbhost-mgmt.home.arpa/172.16.1.8'\n        list address '/mailhost.home.arpa/192.168.16.9'\n        list address '/mailhost-mgmt.home.arpa/172.16.1.9'" /etc/config/dhcp
-    	incus exec openwrt -- sed -i "/option timezone/s,UTC,America/Toronto," /etc/config/system
-	incus restart openwrt
+    incus file push openwrt-etc-config-network "$container/etc/config/network"
+    incus file push openwrt-etc-config-dhcp "$container/etc/config/dhcp"
+    incus file push openwrt-etc-config-system "$container/etc/config/system"
+    incus restart openwrt
 fi
 
 # we want $numcontainers containers running
@@ -305,7 +301,11 @@ for (( n=0;n<numcontainers - numexisting;n++ )); do
       error-exit "Failed to create $container container!"
     fi
     echoverbose "Removing old ssh key if any for $container-mgmt"
-    [ ! -f ~/.ssh/known_hosts ] && touch ~/.ssh/known_hosts || ssh-keygen -f ~/.ssh/known_hosts -R "$container-mgmt"
+    if [ ! -f ~/.ssh/known_hosts ]; then
+        touch ~/.ssh/known_hosts
+    else
+        grep -q "$container-mgmt" ~/.ssh/known_hosts || ssh-keygen -f ~/.ssh/known_hosts -R "$container-mgmt" >/dev/null 2>/dev/null
+    fi
     echoverbose "Configuring $container networking"
     incus network attach $mgmtintf "$container" eth1
     echoverbose "Waiting for $container to complete startup"
@@ -339,20 +339,20 @@ $mgmtnetnum.2 openwrt-mgmt
 ' >>/etc/hosts"
     
     incus exec "$container" timedatectl set-timezone America/Toronto
-    echoverbose "Installing openssh-server on $container"
+    echoverbose "Installing openssh-server on $container-mgmt"
     incus exec "$container" -- apt-get -qq install openssh-server >/dev/null
+    incus exec "$container" -- sed -i -e "s/#ListenAddress 0.0.0.0/ListenAddress $containermgmtip/" /etc/ssh/sshd_config
+    incus exec "$container" -- systemctl restart ssh
 
-    echoverbose "Setting up SSH keys for $container"
+    echoverbose "Setting up SSH keys for $container-mgmt"
     [ -d ~/.ssh ] || ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -q -N "" >/dev/null
     [ ! -f ~/.ssh/id_ed25519.pub ] && ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -q -N "" > /dev/null
-    ssh-keygen -q -R "$container" 2>/dev/null >/dev/null
     ssh-keygen -q -R "$container"-mgmt 2>/dev/null >/dev/null
-    ssh-keyscan "$container" >>~/.ssh/known_hosts 2>/dev/null
-    ssh-keyscan "$container"-mgmt >>~/.ssh/known_hosts 2>/dev/null
+    ssh-keyscan "$container"-mgmt >>~/.ssh/known_hosts 2>/dev/null >/dev/null
     ssh-keygen -q -H >/dev/null 2>/dev/null
 
     echoverbose "Adding remote admin user '$remoteadmin' to $container"
-    incus exec "$container" -- useradd -m -c "SSH remote admin access account" -s /bin/bash -o -u 0 "$remoteadmin"
+    incus exec "$container" -- useradd -m -c "SSH remote admin access account" -s /bin/bash -o -k UID_MIN=0 -u 0 "$remoteadmin"
     incus exec "$container" mkdir "/home/$remoteadmin/.ssh"
     incus exec "$container" chmod 700 "/home/$remoteadmin/.ssh"
     incus file push ~/.ssh/id_ed25519.pub "$container/home/$remoteadmin/.ssh/"
