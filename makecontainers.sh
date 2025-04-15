@@ -405,7 +405,7 @@ ff02::2		ip6-allrouters
 ' >/etc/hosts"
         case "$container" in
             loghost )
-                echoverbose "doing loghost specific setup"
+                echoverbose "Doing loghost specific setup"
                 incus exec "$container" -- apt-get -qq install mysql-server
                 incus exec "$container" -- apt-get -qq install rsyslog-mysql
                 incus exec "$container" -- sh -c 'sed -i -e s/#module(load="imudp")/module(load="imudp")/ -e s/#input(type="imudp"/input(type="imudp"/ /etc/rsyslog.conf'
@@ -426,7 +426,7 @@ EOF
                         fi
                     fi
                 done
-                incus file push $(dirname "$0")/etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
+                incus file push $(dirname "$0")/"$container"-etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
                 # software installs
                 incus exec "$container" -- apt-get -qq install postfix dovecot mailutils apache2 roundcube
                 ;;
@@ -444,7 +444,7 @@ EOF
                         fi
                     fi
                 done
-                incus file push $(dirname "$0")/etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
+                incus file push $(dirname "$0")/"$container"-etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
                 # doing webhost specific setup
                 incus exec "$container" -- apt-get -qq install apache2
                 ;;
@@ -462,7 +462,7 @@ EOF
                         fi
                     fi
                 done
-                incus file push $(dirname "$0")/etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
+                incus file push $(dirname "$0")/"$container"-etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
                 # doing nmshost specific setup
                 ;;
             proxyhost )
@@ -479,7 +479,7 @@ EOF
                         fi
                     fi
                 done
-                incus file push $(dirname "$0")/etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
+                incus file push $(dirname "$0")/"$container"-etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
                 # doing proxyhost specific setup
                 incus exec "$container" -- apt-get -qq install squid
                 ;;
@@ -497,7 +497,7 @@ EOF
                         fi
                     fi
                 done
-                incus file push $(dirname "$0")/etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
+                incus file push $(dirname "$0")/"$container"-etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
                 # doing dbhost specific setup
                 incus exec "$container" -- apt-get -qq install mysql-server
                 ;;
