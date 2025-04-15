@@ -231,9 +231,10 @@ sudo sed -i -e '/^incus-bridge /d' -e '$a'"incus-bridge $bridgeintfnetnum"\
             -e '/^mgmt /d' -e '$a'"mgmt $mgmtnetnum" /etc/networks
 
 ##create the router container if necessary
-if ! incus info openwrt >&/dev/null ; then
+container=openwrt
+if ! incus info "$container" >&/dev/null ; then
     for openwrtfile in network dhcp system; do
-        configfile=openwrt-etc-config-"$openwrtfile"
+        configfile="$container"-etc-config-"$openwrtfile"
         if [ ! -f $(dirname "$0")/"$configfile" ]; then
             echoverbose "Retrieving openwrt $openwrtfile config file"
             if ! wget -q -O $(dirname "$0")/"$configfile" "$githubrepoURL"/"$configfile"; then
@@ -244,16 +245,16 @@ EOF
             fi
         fi
     done
-    if ! incus launch images:openwrt/23.05 openwrt -n "$bridgeintf"; then
+    if ! incus launch images:openwrt/23.05 "$container" -n "$bridgeintf"; then
         error-exit "Failed to create openwrt container!"
     fi
     while [ "$(incus info openwrt | grep '^Status: ')" != "Status: RUNNING" ]; do sleep 2; done
-    incus network attach $lanintf openwrt eth1
-    incus network attach $mgmtintf openwrt eth2
-    incus file push openwrt-etc-config-network "$container/etc/config/network"
-    incus file push openwrt-etc-config-dhcp "$container/etc/config/dhcp"
-    incus file push openwrt-etc-config-system "$container/etc/config/system"
-    incus restart openwrt
+    incus network attach $lanintf "$container" eth1
+    incus network attach $mgmtintf "$container" eth2
+    incus file push $(dirname "$0")/"$container"-etc-config-network "$container/etc/config/network"
+    incus file push $(dirname "$0")/"$container"-etc-config-dhcp "$container/etc/config/dhcp"
+    incus file push $(dirname "$0")/"$container"-etc-config-system "$container/etc/config/system"
+    while ! incus list openwrt | grep -q eth2; do sleep 2; done
 fi
 
 # we want $numcontainers containers running
