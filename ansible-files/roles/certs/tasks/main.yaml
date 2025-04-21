@@ -4,37 +4,37 @@
     state: directory
 
 - name: Generate CA key
-  command: openssl genrsa -out certs/ca.key 4096
-  args: { creates: certs/ca.key }
+  command: openssl genrsa -out certs/rsyslog-ca.key 4096
+  args: { creates: certs/rsyslog-ca.key }
 
 - name: Generate CA cert
   command: >
-    openssl req -x509 -new -nodes -key certs/ca.key
-    -sha256 -days 3650 -subj "/C=US/ST=Example/L=Example/O=Example/CN=MyCA"
-    -out certs/ca.crt
-  args: { creates: certs/ca.crt }
+    openssl req -x509 -new -nodes -key certs/rsyslog-ca.key
+    -sha256 -days 3650 -subj "/C=CA/ST=Ontario/L=Example/O=Example/CN=NETS1037"
+    -out certs/rsyslog-ca.crt
+  args: { creates: certs/rsyslog-ca.crt }
 
 - name: Generate server key
-  command: openssl genrsa -out certs/server.key 2048
-  args: { creates: certs/server.key }
+  command: openssl genrsa -out certs/loghost-rsyslog.key 2048
+  args: { creates: loghost-rsyslog/server.key }
 
 - name: Generate server CSR
-  command: openssl req -new -key certs/server.key -subj "/CN=relp-server" -out certs/server.csr
-  args: { creates: certs/server.csr }
+  command: openssl req -new -key certs/loghost-rsyslog.key -subj "/CN=loghost-mgmt" -out certs/loghost-rsyslog.csr
+  args: { creates: certs/loghost-rsyslog.csr }
 
 - name: Sign server cert
-  command: openssl x509 -req -in certs/server.csr -CA certs/ca.crt -CAkey certs/ca.key -CAcreateserial -out certs/server.crt -days 365 -sha256
-  args: { creates: certs/server.crt }
+  command: openssl x509 -req -in certs/loghost-rsyslog.csr -CA certs/rsyslog-ca.crt -CAkey certs/rsyslog-ca.key -CAcreateserial -out certs/loghost-rsyslog.crt -days 365 -sha256
+  args: { creates: certs/loghost-rsyslog.crt }
 
-- name: Generate client key
-  command: openssl genrsa -out certs/client.key 2048
-  args: { creates: certs/client.key }
+- name: Generate mailhost key
+  command: openssl genrsa -out certs/mailhost-rsyslog.key 2048
+  args: { creates: certs/mailhost-rsyslog.key }
 
 - name: Generate client CSR
-  command: openssl req -new -key certs/client.key -subj "/CN=relp-client" -out certs/client.csr
-  args: { creates: certs/client.csr }
+  command: openssl req -new -key certs/mailhost-rsyslog.key -subj "/CN=mailhost-mgmt" -out certs/mailhost-rsyslog.csr
+  args: { creates: certs/mailhost-rsyslog.csr }
 
 - name: Sign client cert
-  command: openssl x509 -req -in certs/client.csr -CA certs/ca.crt -CAkey certs/ca.key -CAcreateserial -out certs/client.crt -days 365 -sha256
-  args: { creates: certs/client.crt }
+  command: openssl x509 -req -in certs/mailhost-rsyslog.csr -CA certs/rsyslog-ca.crt -CAkey certs/rsyslog-ca.key -CAcreateserial -out certs/mailhost-rsyslog.crt -days 365 -sha256
+  args: { creates: certs/mailhost-rsyslog.crt }
 

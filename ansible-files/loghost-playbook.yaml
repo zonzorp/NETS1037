@@ -1,0 +1,14 @@
+---
+- name: Set up MySQL log database
+  apt:
+    name:
+      - mysql-server
+      - rsyslog-mysql
+    state: present
+
+- name: Configure RELP Server
+  hosts: relp_server
+  become: true
+  roles:
+    - relp_server
+

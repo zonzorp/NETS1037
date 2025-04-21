@@ -6,8 +6,8 @@
   roles:
     - certs
 
-- name: Copy certs to server
-  hosts: relp_server
+- name: Copy certs to loghost
+  hosts: loghost-mgmt
   become: true
   vars:
     cert_dir: /etc/rsyslog/certs
@@ -21,12 +21,12 @@
         dest: "{{ cert_dir }}/{{ item }}"
         mode: "{{ '0600' if item.endswith('.key') else '0644' }}"
       loop:
-        - ca.crt
-        - server.crt
-        - server.key
+        - rsyslog-ca.crt
+        - loghost-rsyslog.crt
+        - loghost-rsyslog.key
 
-- name: Copy certs to clients
-  hosts: relp_clients
+- name: Copy certs to mailhost
+  hosts: mailhost-mgmt
   become: true
   vars:
     cert_dir: /etc/rsyslog/certs
@@ -40,7 +40,7 @@
         dest: "{{ cert_dir }}/{{ item }}"
         mode: "{{ '0600' if item.endswith('.key') else '0644' }}"
       loop:
-        - ca.crt
-        - client.crt
-        - client.key
+        - rsyslog-ca.crt
+        - mailhost-rsyslog.crt
+        - mailhost-rsyslog.key
 

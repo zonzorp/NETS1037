@@ -9,7 +9,7 @@
     content: |
       module(load="omrelp")
       action(type="omrelp"
-             target="192.168.1.100"
+             target="loghost-mgmt"
              port="2514"
              tls="on"
              tls.caCert="/etc/rsyslog/certs/ca.crt"

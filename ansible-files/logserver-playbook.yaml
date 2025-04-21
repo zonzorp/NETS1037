@@ -1,7 +1,0 @@
----
-- name: Configure RELP Server
-  hosts: relp_server
-  become: true
-  roles:
-    - relp_server
-

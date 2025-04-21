@@ -406,10 +406,12 @@ ff02::2		ip6-allrouters
         case "$container" in
             loghost )
                 echoverbose "Doing loghost specific setup"
-                incus exec "$container" -- apt-get -qq install mysql-server
-                incus exec "$container" -- apt-get -qq install rsyslog-mysql
-                incus exec "$container" -- sh -c 'sed -i -e s/#module(load="imudp")/module(load="imudp")/ -e s/#input(type="imudp"/input(type="imudp"/ /etc/rsyslog.conf'
-                incus exec "$container" -- systemctl restart rsyslog
+#                incus exec "$container" -- apt-get -qq install mysql-server
+#                incus exec "$container" -- apt-get -qq install rsyslog-mysql
+#                incus exec "$container" -- sh -c 'sed -i -e s/#module(load="imudp")/module(load="imudp")/ -e s/#input(type="imudp"/input(type="imudp"/ /etc/rsyslog.conf'
+		( cd ansible-files; ansible-playbook -i inventory.ini certscreation-playbook.yaml)
+		( cd ansible-files; ansible-playbook -i inventory.ini loghost-playbook.yaml)
+#                incus exec "$container" -- systemctl restart rsyslog
                 ;;
             mailhost )
                 # doing mailhost specific setup
@@ -427,6 +429,7 @@ EOF
                     fi
                 done
                 incus file push $(dirname "$0")/"$container"-etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
+		( cd ansible-files; ansible-playbook -i inventory.ini mailhost-playbook.yaml)
                 # software installs
                 # incus exec "$container" -- apt-get -qq install postfix dovecot mailutils apache2 roundcube
                 ;;
