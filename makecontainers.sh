@@ -280,7 +280,7 @@ for (( n=0;n<numcontainers - numexisting;n++ )); do
 	        container=proxyhost
 		;;
             4 )
-	        container=dbhost
+	        container=vpnhost
 		;;
 	    5 )
 		container=mailhost
@@ -397,8 +397,8 @@ ff02::2		ip6-allrouters
 172.16.1.6 nmshost-mgmt
 192.168.16.7 proxyhost
 172.16.1.7 proxyhost-mgmt
-192.168.16.8 dbhost
-172.16.1.8 dbhost-mgmt
+192.168.16.8 vpnhost
+172.16.1.8 vpnhost-mgmt
 192.168.16.9 mailhost
 172.16.1.9 mailhost-mgmt
 
@@ -428,7 +428,7 @@ EOF
                 done
                 incus file push $(dirname "$0")/"$container"-etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
                 # software installs
-                incus exec "$container" -- apt-get -qq install postfix dovecot mailutils apache2 roundcube
+                # incus exec "$container" -- apt-get -qq install postfix dovecot mailutils apache2 roundcube
                 ;;
             webhost )
                 # loghost rsyslog setup
@@ -446,7 +446,7 @@ EOF
                 done
                 incus file push $(dirname "$0")/"$container"-etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
                 # doing webhost specific setup
-                incus exec "$container" -- apt-get -qq install apache2
+                # incus exec "$container" -- apt-get -qq install apache2
                 ;;
             nmshost )
                 # loghost rsyslog setup
@@ -483,7 +483,7 @@ EOF
                 # doing proxyhost specific setup
                 incus exec "$container" -- apt-get -qq install squid
                 ;;
-            dbhost )
+            vpnhost )
                 # loghost rsyslog setup
                 for configfile in etc-rsyslog.d-loghost.conf; do
                     file="$container"-"$configfile"
@@ -498,8 +498,9 @@ EOF
                     fi
                 done
                 incus file push $(dirname "$0")/"$container"-etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
-                # doing dbhost specific setup
-                incus exec "$container" -- apt-get -qq install mysql-server
+                # doing vpnhost specific setup
+                # incus exec "$container" -- apt-get -qq install mysql-server
+                (cd ansible-files; ansible-playbook -i inventory.ini vpn-playbook.yaml)
                 ;;
         esac
     fi

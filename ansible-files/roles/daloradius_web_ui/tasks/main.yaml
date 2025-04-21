@@ -1,0 +1,42 @@
+- name: Install web server and PHP packages
+  apt:
+    name:
+      - apache2
+      - php
+      - php-mysql
+      - php-gd
+      - php-pear
+      - php-db
+      - git
+    state: present
+
+- name: Clone Daloradius
+  git:
+    repo: https://github.com/lirantal/daloradius.git
+    dest: /var/www/html/daloradius
+
+- name: Import daloradius SQL schema
+  command: mysql -u root "{{ db_name }}" < /var/www/html/daloradius/contrib/db/fr2-mysql-daloradius-and-freeradius.sql
+
+- name: Configure Apache for Daloradius
+  copy:
+    dest: /etc/apache2/sites-available/000-default.conf
+    content: |
+      <VirtualHost *:80>
+        DocumentRoot /var/www/html/daloradius
+        <Directory /var/www/html/daloradius>
+          Options Indexes FollowSymLinks
+          AllowOverride All
+          Require all granted
+        </Directory>
+      </VirtualHost>
+
+- name: Enable Apache rewrite module
+  command: a2enmod rewrite
+
+- name: Restart Apache
+  service:
+    name: apache2
+    state: restarted
+    enabled: true
+nabled: true

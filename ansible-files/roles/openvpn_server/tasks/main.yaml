@@ -1,0 +1,46 @@
+- name: Install OpenVPN and Easy-RSA
+  apt:
+    name:
+      - openvpn
+      - easy-rsa
+    state: present
+
+- name: Copy RADIUS plugin configuration
+  copy:
+    dest: /etc/openvpn/server.conf
+    content: |
+      port {{ openvpn_port }}
+      proto udp
+      dev tap
+      plugin /usr/lib/openvpn/plugins/radiusplugin.so /etc/openvpn/radiusplugin.cnf
+      ...
+      client-cert-not-required
+      username-as-common-name
+      auth-user-pass-verify /etc/openvpn/checkpsw.sh via-env
+      script-security 3
+      keepalive 10 120
+      persist-key
+      persist-tap
+      verb 3
+
+- name: Deploy RADIUS plugin config
+  copy:
+    dest: /etc/openvpn/radiusplugin.cnf
+    content: |
+      NAS-Identifier=OpenVPN
+      Service-Type=5
+      Framed-Protocol=1
+      NAS-Port-Type=5
+      OpenVPNConfig=/etc/openvpn/server.conf
+      server=127.0.0.1
+      secret={{ radius_secret }}
+      authport=1812
+      acctport=1813
+      retry=1
+      wait=1
+
+- name: Restart OpenVPN
+  service:
+    name: openvpn
+    state: restarted
+    enabled: true

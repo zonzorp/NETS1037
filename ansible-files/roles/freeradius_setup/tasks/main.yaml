@@ -1,0 +1,59 @@
+- name: Install FreeRADIUS and MariaDB
+  apt:
+    name:
+      - freeradius
+      - freeradius-mysql
+      - mariadb-server
+    state: present
+
+- name: Start MariaDB
+  service:
+    name: mariadb
+    state: started
+    enabled: true
+
+- name: Create RADIUS database and user
+  mysql_db:
+    name: "{{ db_name }}"
+    state: present
+
+- name: Create RADIUS DB user
+  mysql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_pass }}"
+    priv: "{{ db_name }}.*:ALL"
+    host: localhost
+    state: present
+
+- name: Import FreeRADIUS schema
+  command: mysql -u root "{{ db_name }}" < /etc/freeradius/3.0/mods-config/sql/main/mysql/schema.sql
+  args:
+    creates: /var/lib/mysql/{{ db_name }}
+
+- name: Configure FreeRADIUS to use SQL
+  lineinfile:
+    path: /etc/freeradius/3.0/mods-enabled/sql
+    regexp: '^#?dialect ='
+    line: 'dialect = "mysql"'
+
+- name: Add SQL config to mods-available/sql
+  copy:
+    dest: /etc/freeradius/3.0/mods-enabled/sql
+    content: |
+      sql {
+        driver = "rlm_sql_mysql"
+        dialect = "mysql"
+        ...
+        server = "localhost"
+        port = 3306
+        login = "{{ db_user }}"
+        password = "{{ db_pass }}"
+        radius_db = "{{ db_name }}"
+        ...
+      }
+
+- name: Restart FreeRADIUS
+  service:
+    name: freeradius
+    state: restarted
+    enabled: true

@@ -1,0 +1,23 @@
+---
+- name: Full OpenVPN + FreeRADIUS + DaloRADIUS Stack
+  hosts: vpn_servers
+  become: true
+  vars:
+    openvpn_port: 1194
+    db_name: radius
+    db_user: radius
+    db_pass: radiuspass
+    radius_secret: testing123
+    web_admin_user: admin
+    web_admin_pass: adminpass
+    vpn_network: "10.8.0.0 255.255.255.0"
+
+  pre_tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+  roles:
+    - { role: openvpn_server }
+    - { role: freeradius_setup }
+    - { role: daloradius_web_ui }
