@@ -15,8 +15,33 @@
     repo: https://github.com/lirantal/daloradius.git
     dest: /var/www/html/daloradius
 
-- name: Import daloradius SQL schema
-  command: mysql -u root "{{ db_name }}" < /var/www/html/daloradius/contrib/db/fr2-mysql-daloradius-and-freeradius.sql
+#- name: Import daloradius SQL schema part 1
+#  command: mysql -u root "{{ db_name }}" < /var/www/html/daloradius/contrib/db/fr3-mariadb-freeradius.sql
+
+#- name: Import daloradius SQL schema part 2
+#  command: mysql -u root "{{ db_name }}" < /var/www/html/daloradius/contrib/db/mariadb-daloradius.sql
+
+#- name: create radius database
+#  mysql_db:
+#    name: "{{ db_name }}"
+#    state: present
+#    login_unix_socket: /run/mysqld/mysqld.sock
+
+- name: create tables ignoring errors
+  community.mysql.mysql_db:
+    name: "{{ db_name }}"
+    state: import
+    target: /var/www/html/daloradius/contrib/db/fr3-mariadb-freeradius.sql
+    login_unix_socket: /run/mysqld/mysqld.sock
+    force: true
+
+- name: restore starting database content ignoring errors
+  community.mysql.mysql_db:
+    name: "{{ db_name }}"
+    state: import
+    target: /var/www/html/daloradius/contrib/db/mariadb-daloradius.sql
+    login_unix_socket: /run/mysqld/mysqld.sock
+    force: true
 
 - name: Configure Apache for Daloradius
   copy:
@@ -39,4 +64,3 @@
     name: apache2
     state: restarted
     enabled: true
-nabled: true

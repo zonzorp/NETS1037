@@ -4,6 +4,7 @@
       - freeradius
       - freeradius-mysql
       - mariadb-server
+      - python3-pymysql
     state: present
 
 - name: Start MariaDB
@@ -14,11 +15,13 @@
 
 - name: Create RADIUS database and user
   mysql_db:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
     name: "{{ db_name }}"
     state: present
 
 - name: Create RADIUS DB user
   mysql_user:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
     name: "{{ db_user }}"
     password: "{{ db_pass }}"
     priv: "{{ db_name }}.*:ALL"
@@ -29,6 +32,13 @@
   command: mysql -u root "{{ db_name }}" < /etc/freeradius/3.0/mods-config/sql/main/mysql/schema.sql
   args:
     creates: /var/lib/mysql/{{ db_name }}
+
+- name: enable the sql module for freeradius
+  file:
+    path: /etc/freeradius/3.0/mods-enabled/sql
+    src: /etc/freeradius/3.0/mods-available/sql
+    state: link
+    force: true
 
 - name: Configure FreeRADIUS to use SQL
   lineinfile:
