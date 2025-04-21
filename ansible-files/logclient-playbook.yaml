@@ -1,0 +1,7 @@
+---
+- name: Configure RELP Clients
+  hosts: relp_clients
+  become: true
+  roles:
+    - relp_client
+

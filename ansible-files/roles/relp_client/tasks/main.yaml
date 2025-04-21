@@ -1,0 +1,27 @@
+- name: Install rsyslog + RELP
+  apt:
+    name: [rsyslog, rsyslog-relp]
+    state: present
+
+- name: Configure client RELP output for security logs
+  copy:
+    dest: /etc/rsyslog.d/90-relp-client.conf
+    content: |
+      module(load="omrelp")
+      action(type="omrelp"
+             target="192.168.1.100"
+             port="2514"
+             tls="on"
+             tls.caCert="/etc/rsyslog/certs/ca.crt"
+             tls.myCert="/etc/rsyslog/certs/client.crt"
+             tls.myPrivKey="/etc/rsyslog/certs/client.key"
+             tls.authMode="certvalid"
+      )
+      if $syslogfacility-text == 'auth' or $syslogfacility-text == 'authpriv' then {
+        *.* :omrelp:
+        stop
+      }
+
+- name: Restart rsyslog
+  service: { name: rsyslog, state: restarted, enabled: true }
+

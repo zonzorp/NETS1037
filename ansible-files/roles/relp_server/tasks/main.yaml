@@ -1,0 +1,22 @@
+- name: Install rsyslog + RELP
+  apt:
+    name: [rsyslog, rsyslog-relp]
+    state: present
+
+- name: Configure RELP input with TLS
+  copy:
+    dest: /etc/rsyslog.d/01-relp-server.conf
+    content: |
+      module(load="imrelp")
+      input(type="imrelp"
+            port="2514"
+            tls="on"
+            tls.certificate="/etc/rsyslog/certs/server.crt"
+            tls.key="/etc/rsyslog/certs/server.key"
+            tls.caCert="/etc/rsyslog/certs/ca.crt"
+            tls.authMode="certvalid"
+      )
+
+- name: Restart rsyslog
+  service: { name: rsyslog, state: restarted, enabled: true }
+
