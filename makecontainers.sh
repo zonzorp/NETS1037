@@ -251,6 +251,47 @@ EOF
   bolt-install
 }
 
+# create CA and build certs
+function build-and-push-certs {
+    keydir=/etc/ssl/private
+    certdir=/etc/ssl/certs
+    csrdir=/etc/ssl/csrs
+    cakeyfile=$keydir/$server.key
+    certfile=$certdir/$server.crt
+    cacertfile=$certdir/ca.crt
+    if [ ! -d $csrdir ]; then
+	    echoverbose "Making csr directory"
+	    sudo mkdir $csrdir
+	 fi
+    # CA first
+    if [ ! -f $keyfile ]; then
+	    echoverbose "Creating CA key"
+	    sudo openssl genrsa -out $cakeyfile 4096
+	fi
+    if [ ! -f $cacertfile ]; then
+		echoverbose "Creating CA certificate"
+  		sudo openssl req -x509 -new -nodes -key $cakeyfile -sha256 -days 3650 -subj "/CN=NETS1037" -out $cacertfile
+	fi
+    for server in loghost mailhost webhost proxyhost vpnhost nmshost; do
+        keyfile=$keydir/$server.key
+        certfile=$certdir/$server.crt
+        csrfile=$csrdir/$server.csr
+        if [ ! -f $keyfile ]; then
+		    echoverbose "Creating $server key"
+	        sudo openssl genrsa -out $keyfile 2048
+        fi
+        if [ -f $keyfile -a ! -f $certfile ]; then
+			echoverbose "Creating $server certificate"
+	        sudo openssl req -new -key $keykeyfile -subj "/CN=$server-mgmt" -out $csrfile
+	        sudo openssl x509 -req -in $csrfile -CA $cacertfile -CAkey $cakeyfile -CAcreateserial -out $certfile -days 365 -sha256
+        fi
+		echoverbose "Pushing CA cert and $server key and cert"
+        incus file push $cacertfile $server$cacertfile
+        incus file push $certfile $server$certfile
+        sudo incus file push $keyfile $server$keyfile
+    done
+}
+
 function filepush {
 	# retrieve config files from github repo
 	target="$1"
@@ -297,7 +338,6 @@ function packageinstalls {
 		fi
 	done
 }
-
 
 lannetnum="192.168.16"
 mgmtnetnum="172.16.1"
@@ -586,6 +626,12 @@ for (( n=0;n<numcontainers - numexisting;n++ )); do
 	if ! incus launch images:ubuntu/"$VERSION_ID" "$container" -n $lanintf; then
 		error-exit "Failed to create $container container!"
 	fi
+
+	# add container to hostvm /etc/hosts file
+    echoverbose "Putting $container in /etc/hosts on hostvm"
+    sudo sed -i -e "/ $container\$/d" -e "/ $container-mgmt\$/d" /etc/hosts
+    sudo sed -i -e '$a'"$containerlanip $container" -e '$a'"$containermgmtip $container-mgmt" /etc/hosts
+
 	# set up second interface and wait for container to be reachable
 	echoverbose "Configuring $container networking"
 	incus network attach $mgmtintf "$container" eth1
@@ -633,8 +679,9 @@ $containermgmtip $container-mgmt
 
 EOF
 	incus file push "$scriptdir/$container/etc/hosts" "$container/etc/hosts"
+	incus file push "$scriptdir/$container/etc/networks" "$container/etc/networks"
 
-    # set timezone in container
+	# set timezone in container
     incus exec "$container" timedatectl set-timezone America/Toronto
 
     # set up ssh service on mgmt intf
@@ -686,51 +733,7 @@ EOF
     echo "Waiting for $container restart"
     while [ "$(incus info "$container" | grep '^Status: ')" != "Status: RUNNING" ]; do sleep 2; done
     while ! incus list "$container" | grep -q eth1; do sleep 2; done
-    echoverbose "Putting $container in /etc/hosts on hostvm"
-    sudo sed -i -e "/ $container\$/d" -e "/ $container-mgmt\$/d" /etc/hosts
-    sudo sed -i -e '$a'"$containerlanip $container" -e '$a'"$containermgmtip $container-mgmt" /etc/hosts
 done
-
-# create CA and build certs
-function build-and-push-certs {
-    keydir=/etc/ssl/private
-    certdir=/etc/ssl/certs
-    csrdir=/etc/ssl/csrs
-    cakeyfile=$keydir/$server.key
-    certfile=$certdir/$server.crt
-    cacertfile=$certdir/ca.crt
-    if [ ! -d $csrdir ]; then
-	    echoverbose "Making csr directory"
-	    sudo mkdir $csrdir
-	 fi
-    # CA first
-    if [ ! -f $keyfile ]; then
-	    echoverbose "Creating CA key"
-	    sudo openssl genrsa -out $cakeyfile 4096
-	fi
-    if [ ! -f $cacertfile ]; then
-		echoverbose "Creating CA certificate"
-  		sudo openssl req -x509 -new -nodes -key $cakeyfile -sha256 -days 3650 -subj "/CN=NETS1037" -out $cacertfile
-	fi
-    for server in loghost mailhost webhost proxyhost vpnhost nmshost; do
-        keyfile=$keydir/$server.key
-        certfile=$certdir/$server.crt
-        csrfile=$csrdir/$server.csr
-        if [ ! -f $keyfile ]; then
-		    echoverbose "Creating $server key"
-	        sudo openssl genrsa -out $keyfile 2048
-        fi
-        if [ -f $keyfile -a ! -f $certfile ]; then
-			echoverbose "Creating $server certificate"
-	        sudo openssl req -new -key $keykeyfile -subj "/CN=$server-mgmt" -out $csrfile
-	        sudo openssl x509 -req -in $csrfile -CA $cacertfile -CAkey $cakeyfile -CAcreateserial -out $certfile -days 365 -sha256
-        fi
-		echoverbose "Pushing CA cert and $server key and cert"
-        incus file push $cacertfile $server$cacertfile
-        incus file push $certfile $server$certfile
-        sudo incus file push $keyfile $server$keyfile
-    done
-}
 
 # setup for NETS1037 course containers
 if [ "$nets1037" = "true" ]; then
