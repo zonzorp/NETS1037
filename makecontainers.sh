@@ -184,8 +184,8 @@ echo "You may ignore any messages about Open vSwitch or dpkg-preconfigure being 
 echo "DO NOT use control-Z when this script is running."
 
 # ensure we have ssh keys
-echoverbose "Setting up SSH keys for $(id -n)"
-[ -f ~/.ssh/id_ed25519.pub ] && ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -q -N "" > /dev/null
+echoverbose "Setting up SSH keys for $(id -un)"
+[ -f ~/.ssh/id_ed25519.pub ] && ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N "" > /dev/null
 
 # init incus if no incusbr0 exists yet, else get rid of old containers if fresh is requested
 if ! ip a s incusbr0 >&/dev/null; then
