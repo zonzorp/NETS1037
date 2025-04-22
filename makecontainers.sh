@@ -660,7 +660,7 @@ ff02::2		ip6-allrouters
 		incus exec "$container" -- apt-get -qq install rsyslog-relp
 		incus file push /etc/ssl/certs/rsyslog-ca.crt "$container"/etc/ssl/certs/rsyslog-ca.crt
 		incus file push /etc/ssl/certs/"$container"-rsyslog.crt "$container"/etc/ssl/certs/"$container"-rsyslog.crt
-		incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
+		sudo incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
                 for configfile in etc-rsyslog.conf; do
                     file="$container"-"$configfile"
                     if [ ! -f $(dirname "$0")/"$file" ]; then
@@ -681,7 +681,7 @@ EOF
                 # loghost rsyslog setup
                 incus file push /etc/ssl/certs/rsyslog-ca.crt "$container"/etc/ssl/certs/rsyslog-ca.crt
 		incus file push /etc/ssl/certs/"$container"-rsyslog.crt "$container"/etc/ssl/certs/"$container"-rsyslog.crt
-		incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
+		sudo incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
                 for configfile in etc-rsyslog.d-loghost.conf; do
                     file="$container"-"$configfile"
                     if [ ! -f $(dirname "$0")/"$file" ]; then
@@ -696,13 +696,13 @@ EOF
                 done
                 incus file push $(dirname "$0")/"$container"-etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
                 # software installs
-                incus exec "$container" -- apt-get -qq install postfix dovecot mailutils apache2 roundcube
+                incus exec "$container" -- apt-get -qq install postfix dovecot-imapd mailutils apache2 roundcube
                 ;;
             webhost )
                 # loghost rsyslog setup
                 incus file push /etc/ssl/certs/rsyslog-ca.crt "$container"/etc/ssl/certs/rsyslog-ca.crt
 		incus file push /etc/ssl/certs/"$container"-rsyslog.crt "$container"/etc/ssl/certs/"$container"-rsyslog.crt
-		incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
+		sudo incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
                 for configfile in etc-rsyslog.d-loghost.conf; do
                     file="$container"-"$configfile"
                     if [ ! -f $(dirname "$0")/"$file" ]; then
@@ -723,7 +723,7 @@ EOF
                 # loghost rsyslog setup
                 incus file push /etc/ssl/certs/rsyslog-ca.crt "$container"/etc/ssl/certs/rsyslog-ca.crt
 		incus file push /etc/ssl/certs/"$container"-rsyslog.crt "$container"/etc/ssl/certs/"$container"-rsyslog.crt
-		incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
+		sudo incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
                 for configfile in etc-rsyslog.d-loghost.conf; do
                     file="$container"-"$configfile"
                     if [ ! -f $(dirname "$0")/"$file" ]; then
@@ -743,7 +743,7 @@ EOF
                 # loghost rsyslog setup
                 incus file push /etc/ssl/certs/rsyslog-ca.crt "$container"/etc/ssl/certs/rsyslog-ca.crt
 		incus file push /etc/ssl/certs/"$container"-rsyslog.crt "$container"/etc/ssl/certs/"$container"-rsyslog.crt
-		incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
+		sudo incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
                 for configfile in etc-rsyslog.d-loghost.conf; do
                     file="$container"-"$configfile"
                     if [ ! -f $(dirname "$0")/"$file" ]; then
@@ -764,7 +764,7 @@ EOF
                 # loghost rsyslog setup
                 incus file push /etc/ssl/certs/rsyslog-ca.crt "$container"/etc/ssl/certs/rsyslog-ca.crt
 		incus file push /etc/ssl/certs/"$container"-rsyslog.crt "$container"/etc/ssl/certs/"$container"-rsyslog.crt
-		incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
+		sudo incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
                 for configfile in etc-rsyslog.d-loghost.conf; do
                     file="$container"-"$configfile"
                     if [ ! -f $(dirname "$0")/"$file" ]; then
@@ -780,7 +780,7 @@ EOF
                 incus file push $(dirname "$0")/"$container"-etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
                 # doing vpnhost specific setup
                 # incus exec "$container" -- apt-get -qq install mysql-server
-                (cd ansible-files; ansible-playbook -i inventory.ini vpn-playbook.yaml)
+                (cd ansible-files; ansible-playbook -i inventory.ini vpnsetup-playbook.yaml)
                 ;;
         esac
     fi
