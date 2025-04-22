@@ -755,7 +755,7 @@ if [ "$nets1037" = "true" ]; then
 	  				continue
 	  			fi
 				# install config files from github repo
-				filepush "$container" etc-rsyslog.conf rsyslog 
+				filepush "$container" etc/rsyslog.conf rsyslog 
 				;;
 		mailhost )
 			echoverbose "Doing $container specific setup"
@@ -765,7 +765,7 @@ if [ "$nets1037" = "true" ]; then
 	  			continue
 	  		fi
 			# install config files from github repo
-			filepush "$container" etc-rsyslog.d-loghost.conf rsyslog
+			filepush "$container" etc/rsyslog.d/loghost.conf rsyslog
    			;;
 		webhost )
 			echoverbose "Doing $container specific setup"
@@ -775,7 +775,7 @@ if [ "$nets1037" = "true" ]; then
 	  			continue
 	  		fi
 			# install config files from github repo
-			filepush "$container" etc-rsyslog.d-loghost.conf rsyslog
+			filepush "$container" etc/rsyslog.d/loghost.conf rsyslog
 			;;
 		nmshost )
 			echoverbose "Doing $container specific setup"
@@ -785,7 +785,7 @@ if [ "$nets1037" = "true" ]; then
 	  			continue
 	  		fi
 			# install config files from github repo
-			filepush "$container" etc-rsyslog.d-loghost.conf rsyslog
+			filepush "$container" etc/rsyslog.d/loghost.conf rsyslog
 			;;
 		proxyhost )
 			echoverbose "Doing $container specific setup"
@@ -795,7 +795,7 @@ if [ "$nets1037" = "true" ]; then
 	  			continue
 	  		fi
 			# install config files from github repo
-			filepush "$container" etc-rsyslog.d-loghost.conf rsyslog
+			filepush "$container" etc/rsyslog.d/loghost.conf rsyslog
 			;;
 		vpnhost )
 			echoverbose "Doing $container specific setup"
@@ -805,7 +805,7 @@ if [ "$nets1037" = "true" ]; then
 	  			continue
 	  		fi
 			# install config files from github repo
-			filepush "$container" etc-rsyslog.d-loghost.conf rsyslog
+			filepush "$container" etc/rsyslog.d/loghost.conf rsyslog
             (cd ansible-files; ansible-playbook -i inventory.ini vpnsetup-playbook.yaml)
 			;;
 	esac
