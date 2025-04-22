@@ -184,8 +184,8 @@ echo "You may ignore any messages about Open vSwitch or dpkg-preconfigure being 
 echo "DO NOT use control-Z when this script is running."
 
 # ensure we have ssh keys
-echoverbose "Setting up SSH keys for $container-mgmt"
-[ -d ~/.ssh -o ! -f ~/.ssh/id_ed25519.pub ] && ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -q -N "" > /dev/null
+echoverbose "Setting up SSH keys for $(id -n)"
+[ -f ~/.ssh/id_ed25519.pub ] && ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -q -N "" > /dev/null
 
 # init incus if no incusbr0 exists yet, else get rid of old containers if fresh is requested
 if ! ip a s incusbr0 >&/dev/null; then
@@ -315,6 +315,7 @@ for (( n=0;n<numcontainers - numexisting;n++ )); do
 	# set up netplan file and push it to openwrt container, then apply it
 	netplanfile=$(incus exec "$container" -- grep -lR eth0 /etc/netplan)
 	echoverbose "Creating netplan file $netplanfile"
+ 	[ ! -d "$scriptdir/$container$(dirname $netplanfile)" ] && mkdir -p "$scriptdir/$container$(dirname $netplanfile)"
 	cat > $scriptdir/$container$netplanfile <<EOF
 network:
     version: 2
