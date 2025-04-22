@@ -679,7 +679,7 @@ $containermgmtip $container-mgmt
 
 EOF
 	incus file push "$scriptdir/$container/etc/hosts" "$container/etc/hosts"
-	incus file push "$scriptdir/$container/etc/networks" "$container/etc/networks"
+	incus file push /etc/networks "$container/etc/networks"
 
 	# set timezone in container
     incus exec "$container" timedatectl set-timezone America/Toronto
