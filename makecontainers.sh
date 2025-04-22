@@ -251,6 +251,54 @@ EOF
   bolt-install
 }
 
+function filepush {
+	# retrieve config files from github repo
+	target="$1"
+	configfile="$2"
+ 	services="$3"
+	if [ -z "$target" -o -z "$configfile" ]; then
+ 		echoverbose "filepush error: target='$target' configfile='$configfile' services='$services'"
+		return 1
+	fi
+   	filedir="$scriptdir/$target/$(dirname $configfile)"
+  	[ ! -d "$filedir" ] && mkdir -p "$filedir"
+	if [ ! -f "$scriptdir/$target/$configfile" ]; then
+		echoverbose "Retrieving $container $configfile config file"
+		if ! wget -q -O "$scriptdir/$target/$configfile" "$githubrepoURLprefix/$target/$configfile"; then
+			cat <<EOF
+You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
+EOF
+			return 1
+		fi
+	fi
+	# push config files to container, restarting services as needed
+	echoverbose "Pushing $configfile to $target"
+	if ! incus file push "$scriptdir/$target/$configfile" "$target/$configfile"; then
+		echoverbose "incus file push failed"
+  		return 1
+	fi
+ 	if [ "$services" != "" ]; then
+		echoverbose "Restarting $services"
+		if ! incus exec "$target" -- systemctl restart "$services"; then
+  			echoverbose "Failed to restart $target $services"
+	 		return 1
+  		fi
+	fi
+}
+
+function packageinstalls {
+	target="$1"
+ 	shift
+	for packagename in $@; do
+		echoverbose "Installing $packagename on $target"
+		if ! incus exec "$container" -- apt-get -qq install "$packagename"; then
+  			echoverbose "Failed to install $packagename on $target"
+	 		return 1
+		fi
+	done
+}
+
+
 lannetnum="192.168.16"
 mgmtnetnum="172.16.1"
 bridgeintf=incusbr0
@@ -264,6 +312,7 @@ numcontainers=1
 verbose=false
 githubrepo=https://github.com/zonzorp/NETS1037
 githubrepoURLprefix="$githubrepo"/raw/main
+scriptdir="$(dirname $0)"
 
 sudo-check
 
@@ -418,7 +467,11 @@ echo "This script performs many tasks. Please be patient"
 echo "To see more about what it is doing as it does it, use the --verbose option"
 echo "You may ignore any messages about Open vSwitch or dpkg-preconfigure being unable to re-open stdin"
 echo "DO NOT use control-Z when this script is running."
-      
+
+# ensure we have ssh keys
+echoverbose "Setting up SSH keys for $container-mgmt"
+[ -d ~/.ssh -o ! -f ~/.ssh/id_ed25519.pub ] && ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -q -N "" > /dev/null
+
 # init incus if no incusbr0 exists yet, else get rid of old containers if fresh is requested
 if ! ip a s incusbr0 >&/dev/null; then
   echoverbose "Initializing incus"
@@ -468,27 +521,20 @@ sudo sed -i -e '/^incus-bridge /d' -e '$a'"incus-bridge $bridgeintfnetnum"\
 ##create the router container if necessary
 container=openwrt
 if ! incus info "$container" >&/dev/null ; then
-    for openwrtfile in network dhcp system; do
-        configfile="$container"-etc-config-"$openwrtfile"
-        if [ ! -f $(dirname "$0")/"$configfile" ]; then
-            echoverbose "Retrieving openwrt $openwrtfile config file"
-            if ! wget -q -O $(dirname "$0")/"$configfile" "$githubrepoURL"/"$configfile"; then
-                cat <<EOF
-You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
-EOF
-                exit 1
-            fi
-        fi
-    done
+	# launch fresh openwrt container on the bridge network
     if ! incus launch images:openwrt/23.05 "$container" -n "$bridgeintf"; then
         error-exit "Failed to create openwrt container!"
     fi
+    # wait for the container to be running
     while [ "$(incus info openwrt | grep '^Status: ')" != "Status: RUNNING" ]; do sleep 2; done
+    # attach lan and mgmt networks
     incus network attach $lanintf "$container" eth1
     incus network attach $mgmtintf "$container" eth2
-    incus file push $(dirname "$0")/"$container"-etc-config-network "$container/etc/config/network"
-    incus file push $(dirname "$0")/"$container"-etc-config-dhcp "$container/etc/config/dhcp"
-    incus file push $(dirname "$0")/"$container"-etc-config-system "$container/etc/config/system"
+    # update the openwrt config with config files from the repo
+    filepush "$container" etc/config/dhcp ""
+    filepush "$container" etc/config/network ""
+    filepush "$container" etc/config/system ""
+    # wait for the interfaces to configure themselves
     while ! incus list openwrt | grep -q eth2; do sleep 2; done
 fi
 
@@ -500,55 +546,55 @@ if [ "$nets1037" = "true" ]; then
 fi
 numexisting=$(incus list -c n --format csv|grep -c "$prefix")
 for (( n=0;n<numcontainers - numexisting;n++ )); do
-    if [ "$nets1037" = "true" ]; then
-	case "$n" in
-	    0 )
-	        container=loghost
-		;;
-	    1 )
-	        container=webhost
-		;;
-            2 )
-	        container=nmshost
-		;;
-            3 )
-	        container=proxyhost
-		;;
-            4 )
-	        container=vpnhost
-		;;
-	    5 )
-		container=mailhost
-		;;
-	esac
-    else
-        container="$prefix$((n+1))"
-    fi
-    containerbridgeintfip="$bridgeintfnetnum.$((n + startinghostnum))"
-    containerlanip="$lannetnum.$((n + startinghostnum))"
-    containermgmtip="$mgmtnetnum.$((n + startinghostnum))"
-    if incus info "$container" >& /dev/null; then
-      echoverbose "$container already exists"
-      continue
-    else
-      echoverbose "Creating $container"
-    fi
-    if ! incus launch images:ubuntu/"$VERSION_ID" "$container" -n $lanintf; then
-      error-exit "Failed to create $container container!"
-    fi
-    echoverbose "Removing old ssh key if any for $container-mgmt"
-    if [ ! -f ~/.ssh/known_hosts ]; then
-        touch ~/.ssh/known_hosts
-    else
-        grep -q "$container-mgmt" ~/.ssh/known_hosts || ssh-keygen -f ~/.ssh/known_hosts -R "$container-mgmt" >/dev/null 2>/dev/null
-    fi
-    echoverbose "Configuring $container networking"
-    incus network attach $mgmtintf "$container" eth1
-    echoverbose "Waiting for $container to complete startup"
-    while [ "$(incus info "$container" | grep '^Status: ')" != "Status: RUNNING" ]; do sleep 2; done
-    
-    netplanfile=$(incus exec "$container" ls /etc/netplan)
-    incus exec "$container" -- sh -c "cat > /etc/netplan/$netplanfile <<EOF
+	# override default container naming if making containers for nets1037 coourse
+	if [ "$nets1037" = "true" ]; then
+		case "$n" in
+		    0 )
+		        container=loghost
+				;;
+		    1 )
+		        container=webhost
+				;;
+			2 )
+		        container=nmshost
+				;;
+			3 )
+		        container=proxyhost
+				;;
+			4 )
+		        container=vpnhost
+				;;
+			5 )
+				container=mailhost
+				;;
+		esac
+	else
+		# default container naming
+		container="$prefix$((n+1))"
+	fi
+	# generate IP addresses for container
+	containerbridgeintfip="$bridgeintfnetnum.$((n + startinghostnum))"
+	containerlanip="$lannetnum.$((n + startinghostnum))"
+	containermgmtip="$mgmtnetnum.$((n + startinghostnum))"
+	# check for existing container
+	if incus info "$container" >& /dev/null; then
+		echoverbose "$container already exists"
+		continue
+	fi
+	# create default container
+	echoverbose "Creating $container"
+	if ! incus launch images:ubuntu/"$VERSION_ID" "$container" -n $lanintf; then
+		error-exit "Failed to create $container container!"
+	fi
+	# set up second interface and wait for container to be reachable
+	echoverbose "Configuring $container networking"
+	incus network attach $mgmtintf "$container" eth1
+	echoverbose "Waiting for $container to complete startup"
+	while [ "$(incus info "$container" | grep '^Status: ')" != "Status: RUNNING" ]; do sleep 2; done
+	# set up netplan file and push it to openwrt container, then apply it
+	netplanfile=$(incus exec "$container" -- grep -lR eth0 /etc/netplan)
+	echoverbose "Creating netplan file $netplanfile"
+	cat > $scriptdir/$container$netplanfile <<EOF
 network:
     version: 2
     ethernets:
@@ -563,41 +609,58 @@ network:
         eth1:
             addresses: [$containermgmtip/24]
 EOF
-"
+	chmod 600 "$scriptdir/$container$netplanfile"
+	echoverbose "Pushing $netplanfile to $container"
+	incus file push "$scriptdir/$container$netplanfile" "openwrt$netplanfile"
     incus exec "$container" -- bash -c '[ -d /etc/cloud ] && echo "network: {config: disabled}" > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg'
-    incus exec "$container" chmod 600 /etc/netplan/"$netplanfile"
     incus exec "$container" netplan apply
+	# wait for container networking to come up
     while ! incus list "$container" | grep -q eth1; do sleep 2; done
-    incus exec "$container" -- sh -c 'sed -i -e "/[[:space:]]'$container'\$/d" -e "/[[:space:]]'$container'-mgmt\$/d" -e "/[[:space:]]openwrt\$/d" -e "/[[:space:]]openwrt-mgmt\$/d" /etc/hosts'
-    incus exec "$container" -- sh -c "echo '
-$containerlanip $container
-$containermgmtip $container-mgmt
+	
+    #update container /etc/hosts file
+	cat > $scriptdir/$container/etc/hosts <<EOF
+127.0.0.1	localhost
+::1		localhost ip6-localhost ip6-loopback
+ff02::1		ip6-allnodes
+ff02::2		ip6-allrouters
+
+$lannetnum.1 hostvm
+$mgmtnetnum.1 hostvm-mgmt
 $lannetnum.2 openwrt
 $mgmtnetnum.2 openwrt-mgmt
-' >>/etc/hosts"
-    
+$containerlanip $container
+$containermgmtip $container-mgmt
+
+EOF
+	incus file push "$scriptdir/$container/etc/hosts" "$container/etc/hosts"
+
+    # set timezone in container
     incus exec "$container" timedatectl set-timezone America/Toronto
+
+    # set up ssh service on mgmt intf
     echoverbose "Installing openssh-server on $container-mgmt"
     incus exec "$container" -- apt-get -qq install openssh-server >/dev/null
     incus exec "$container" -- sed -i -e "s/#ListenAddress 0.0.0.0/ListenAddress $containermgmtip/" /etc/ssh/sshd_config
     incus exec "$container" -- systemctl restart ssh
 
-    echoverbose "Setting up SSH keys for $container-mgmt"
-    [ -d ~/.ssh ] || ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -q -N "" >/dev/null
-    [ ! -f ~/.ssh/id_ed25519.pub ] && ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -q -N "" > /dev/null
-    ssh-keygen -q -R "$container"-mgmt 2>/dev/null >/dev/null
-    ssh-keyscan "$container"-mgmt >>~/.ssh/known_hosts 2>/dev/null >/dev/null
-    ssh-keygen -q -H >/dev/null 2>/dev/null
+	# update hostkey on hostvm for the container
+    echoverbose "Removing old ssh hostkey if any for $container-mgmt"
+    if [  -f ~/.ssh/known_hosts ]; then
+        ssh-keygen -f ~/.ssh/known_hosts -R "$container-mgmt" >/dev/null 2>/dev/null
+    fi
+    echoverbose "Retrieving hostkey for $container"
+    ssh-keyscan -H "$container"-mgmt >>~/.ssh/known_hosts 2>/dev/null >/dev/null
 
-    echoverbose "Adding remote admin user '$remoteadmin' to $container"
+    # create remoteadmin user in container and add our pubkey to authorized_keys
+	echoverbose "Adding remote admin user '$remoteadmin' to $container"
     incus exec "$container" -- useradd -m -c "SSH remote admin access account" -s /bin/bash -o -k UID_MIN=0 -u 0 "$remoteadmin"
     incus exec "$container" mkdir "/home/$remoteadmin/.ssh"
     incus exec "$container" chmod 700 "/home/$remoteadmin/.ssh"
-    incus file push ~/.ssh/id_ed25519.pub "$container/home/$remoteadmin/.ssh/"
     incus exec "$container" cp "/home/$remoteadmin/.ssh/id_ed25519.pub" "/home/$remoteadmin/.ssh/authorized_keys"
     incus exec "$container" chmod 600 "/home/$remoteadmin/.ssh/authorized_keys"
     incus exec "$container" -- chown -R "$remoteadmin" "/home/$remoteadmin"
-    
+
+	# create account for current user in container with our current keys and add our pubkey to authorized_keys
     username="$(id -un)"
     userdescrip="$(grep ^$username: /etc/passwd|cut -d: -f5)"
     shadowentry="$(sudo grep ^$username: /etc/shadow| cut -d: -f 2)"
@@ -607,20 +670,23 @@ $mgmtnetnum.2 openwrt-mgmt
     incus exec "$container" -- sed -i -e "/^$username:/s,!,$shadowentry," /etc/shadow
     incus exec "$container" mkdir "/home/$username/.ssh"
     incus exec "$container" chmod 700 "/home/$username/.ssh"
+    incus file push ~/.ssh/id_ed25519 "$container/home/$username/.ssh/"
     incus file push ~/.ssh/id_ed25519.pub "$container/home/$username/.ssh/"
     incus exec "$container" cp "/home/$username/.ssh/id_ed25519.pub" "/home/$username/.ssh/authorized_keys"
     incus exec "$container" chmod 600 "/home/$username/.ssh/authorized_keys"
     incus exec "$container" -- chown -R "$username" "/home/$username"
 
+	# set hostname in the container
     echoverbose "Setting $container hostname"
     incus exec "$container" hostnamectl set-hostname "$container"
-    
+
+	# restart container to ensure everything is clean
     echoverbose "Restarting $container"
     incus restart "$container"
     echo "Waiting for $container restart"
-#    while [ "$(incus info "$container" | grep '^Status: ')" != "Status: RUNNING" ]; do sleep 2; done
+    while [ "$(incus info "$container" | grep '^Status: ')" != "Status: RUNNING" ]; do sleep 2; done
     while ! incus list "$container" | grep -q eth1; do sleep 2; done
-    echoverbose "Adding $container to /etc/hosts file if necessary"
+    echoverbose "Putting $container in /etc/hosts on hostvm"
     sudo sed -i -e "/ $container\$/d" -e "/ $container-mgmt\$/d" /etc/hosts
     sudo sed -i -e '$a'"$containerlanip $container" -e '$a'"$containermgmtip $container-mgmt" /etc/hosts
 done
@@ -664,54 +730,6 @@ function build-and-push-certs {
         incus file push $certfile $server$certfile
         sudo incus file push $keyfile $server$keyfile
     done
-}
-
-function filepush {
-	# retrieve config files from github repo
-	target="$1"
-	configfile="$2"
- 	services="$3"
-	file="$target"/"$configfile"
-	if [ -z "$target" -o -z "$configfile" ]; then
- 		echoverbose "filepush error: target='$target' configfile='$configfile' services='$services'"
-		return 1
-	fi
-	if [ ! -f $(dirname "$0")/"$file" ]; then
-		echoverbose "Retrieving $container $configfile config file"
-  		filedir=$(dirname "$0")/$file:h
-  		[ ! -d $filedir ] && mkdir -p $filedir
-		if ! wget -q -O $(dirname "$0")/"$file" "$githubrepoURLprefix"/"$file"; then
-			cat <<EOF
-You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
-EOF
-			return 1
-		fi
-	fi
-	# push config files to container, restarting services as needed
-	echoverbose "Pushing $configfile to $target"
-	if ! incus file push $(dirname "$0")/"$file" "$file"; then
-		echoverbose "incus file push failed"
-  		return 1
-	fi
- 	if [ "$services" != "" ]; then
-		echoverbose "Restarting $services"
-		if ! incus exec "$target" -- systemctl restart "$services"; then
-  			echoverbose "Failed to restart $target $services"
-	 		return 1
-  		fi
-	fi
-}
-
-function packageinstalls {
-	target="$1"
- 	shift
-	for packagename in $@; do
-		echoverbose "Installing $packagename on $target"
-		if ! incus exec "$container" -- apt-get -qq install "$packagename"; then
-  			echoverbose "Failed to install $packagename on $target"
-	 		return 1
-		fi
-	done
 }
 
 # setup for NETS1037 course containers
