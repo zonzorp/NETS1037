@@ -740,6 +740,7 @@ if [ "$nets1037" = "true" ]; then
     echoverbose "Doing setup for NETS1037 course containers"
 	echoverbose "Install certs as needed"
     build-and-push-certs
+    for container in loghost mailhost webhost proxyhost vpnhost nmshost; do
 	echoverbose "Setting up /etc/hosts files on $container"
 	incus exec "$container" -- sh -c "echo '
 127.0.0.1	localhost
@@ -828,4 +829,5 @@ ff02::2		ip6-allrouters
             (cd ansible-files; ansible-playbook -i inventory.ini vpnsetup-playbook.yaml)
 			;;
 	esac
+ done
 fi
