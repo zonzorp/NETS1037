@@ -85,6 +85,8 @@ Continuing container creation now.
 "
 		fi
 	fi
+	sudo apt-get install -qq incus-ui-canonical >/dev/null || error-exit "Unable to install incus-ui-canonical package"
+	sudo incus config set core.https_address :8443
 }
 
 # This function deletes existing lab incus containers
