@@ -28,22 +28,6 @@ function error-exit {
   exit "${2:-1}"
 }
 
-# create CA and build certs
-function build-certs {
-    keydir=/etc/ssl/private
-    certdir=/etc/ssl/certs
-    csrdir=/etc/ssl/csrs
-    [ ! -d $csrdir ] && sudo mkdir /etc/ssl/csrs
-    # CA first
-    [ ! -f $keydir/rsyslog-ca.key ] && sudo openssl genrsa -out $keydir/rsyslog-ca.key 4096
-    [ ! -f $keydir/rsyslog-ca.crt ] && sudo openssl req -x509 -new -nodes -key $keydir/rsyslog-ca.key -sha256 -days 3650 -subj "/C=CA/ST=Ontario/CN=NETS1037" -out $certdir/rsyslog-ca.crt
-    for server in loghost mailhost webhost proxyhost vpnhost nmshost; do
-        [ ! -f $keydir/$server-rsyslog.key ] && sudo openssl genrsa -out $keydir/$server-rsyslog.key 2048
-        [ ! -f $keydir/$server-rsyslog.key ] && sudo openssl req -new -key $keydir/$server-rsyslog.key -subj "/CN=$server-mgmt" -out $csrdir/$server-rsyslog.csr
-        [ ! -f $keydir/$server-rsyslog.key ] && sudo openssl x509 -req -in $csrdir/$server-rsyslog.csr -CA $certdir/rsyslog-ca.crt -CAkey $keydir/rsyslog-ca.key -CAcreateserial -out $certdir/$server-rsyslog.crt -days 365 -sha256
-    done
-}
-
 # install incus if necessary, adding user to incus groups as needed
 function incus-install-check {
   which incus >/dev/null && return
@@ -429,9 +413,6 @@ echo "This script performs many tasks. Please be patient"
 echo "To see more about what it is doing as it does it, use the --verbose option"
 echo "You may ignore any messages about Open vSwitch or dpkg-preconfigure being unable to re-open stdin"
 echo "DO NOT use control-Z when this script is running."
-
-# set up CA and basic certs for various uses in containers
-build-certs
       
 # init incus if no incusbr0 exists yet, else get rid of old containers if fresh is requested
 if ! ip a s incusbr0 >&/dev/null; then
@@ -628,9 +609,112 @@ $mgmtnetnum.2 openwrt-mgmt
 
     echoverbose "Setting $container hostname"
     incus exec "$container" hostnamectl set-hostname "$container"
-    if [ "$nets1037" = "true" ]; then
-        echoverbose "Setting up /etc/hosts files on $container"
-        incus exec "$container" -- sh -c "echo '
+    
+    echoverbose "Restarting $container"
+    incus restart "$container"
+    echo "Waiting for $container restart"
+#    while [ "$(incus info "$container" | grep '^Status: ')" != "Status: RUNNING" ]; do sleep 2; done
+    while ! incus list "$container" | grep -q eth1; do sleep 2; done
+    echoverbose "Adding $container to /etc/hosts file if necessary"
+    sudo sed -i -e "/ $container\$/d" -e "/ $container-mgmt\$/d" /etc/hosts
+    sudo sed -i -e '$a'"$containerlanip $container" -e '$a'"$containermgmtip $container-mgmt" /etc/hosts
+done
+
+# create CA and build certs
+function build-and-push-certs {
+    keydir=/etc/ssl/private
+    certdir=/etc/ssl/certs
+    csrdir=/etc/ssl/csrs
+    cakeyfile=$keydir/$server.key
+    certfile=$certdir/$server.crt
+    cacertfile=$certdir/ca.crt
+    if [ ! -d $csrdir ]; then
+	    echoverbose "Making csr directory"
+	    sudo mkdir $csrdir
+	 fi
+    # CA first
+    if [ ! -f $keyfile ]; then
+	    echoverbose "Creating CA key"
+	    sudo openssl genrsa -out $cakeyfile 4096
+	fi
+    if [ ! -f $cacertfile ]; then
+		echoverbose "Creating CA certificate"
+  		sudo openssl req -x509 -new -nodes -key $cakeyfile -sha256 -days 3650 -subj "/CN=NETS1037" -out $cacertfile
+	fi
+    for server in loghost mailhost webhost proxyhost vpnhost nmshost; do
+        keyfile=$keydir/$server.key
+        certfile=$certdir/$server.crt
+        csrfile=$csrdir/$server.csr
+        if [ ! -f $keyfile ]; then
+		    echoverbose "Creating $server key"
+	        sudo openssl genrsa -out $keyfile 2048
+        fi
+        if [ -f $keyfile -a ! -f $certfile ]; then
+			echoverbose "Creating $server certificate"
+	        sudo openssl req -new -key $keykeyfile -subj "/CN=$server-mgmt" -out $csrfile
+	        sudo openssl x509 -req -in $csrfile -CA $cacertfile -CAkey $cakeyfile -CAcreateserial -out $certfile -days 365 -sha256
+        fi
+		echoverbose "Pushing CA cert and $server key and cert"
+        incus file push $cacertfile $server$cacertfile
+        incus file push $certfile $server$certfile
+        sudo incus file push $keyfile $server$keyfile
+    done
+}
+
+function filepush {
+	# retrieve config files from github repo
+	target="$1"
+	configfile="$2"
+ 	services="$3"
+	file="$target"-"$configfile"
+	if [ -z "$target" -o -z "$configfile" ]; then
+ 		echoverbose "filepush error: target='$target' configfile='$configfile' services='$services'"
+		return 1
+	fi
+	if [ ! -f $(dirname "$0")/"$file" ]; then
+		echoverbose "Retrieving $container $configfile config file"
+		if ! wget -q -O $(dirname "$0")/"$file" "$githubrepoURL"/"$file"; then
+			cat <<EOF
+You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
+EOF
+			return 1
+		fi
+	fi
+	# push config files to container, restarting services as needed
+ 	destfile="$(sed s,-,/, <<< '$file')"
+	echoverbose "Pushing $file to $dest"
+	if ! incus file push $(dirname "$0")/"$file" "$destfile"; then
+		echoverbose "incus file push failed"
+  		return 1
+	fi
+ 	if [ "$services" != "" ]; then
+		echoverbose "Restarting $services"
+		if ! incus exec "$target" -- systemctl restart "$services"; then
+  			echoverbose "Failed to restart $target $services"
+	 		return 1
+  		fi
+	fi
+}
+
+function packageinstalls {
+	target="$1"
+ 	shift
+	for packagename in $@; do
+		echoverbose "Installing $packagename on $target"
+		if ! incus exec "$container" -- apt-get -qq install "$packagename"; then
+  			echoverbose "Failed to install $packagename on $target"
+	 		return 1
+		fi
+	done
+}
+
+# setup for NETS1037 course containers
+if [ "$nets1037" = "true" ]; then
+    echoverbose "Doing setup for NETS1037 course containers"
+	echoverbose "Install certs as needed"
+    build-and-push-certs
+	echoverbose "Setting up /etc/hosts files on $container"
+	incus exec "$container" -- sh -c "echo '
 127.0.0.1	localhost
 ::1		localhost ip6-localhost ip6-loopback
 ff02::1		ip6-allnodes
@@ -652,145 +736,67 @@ ff02::2		ip6-allrouters
 172.16.1.9 mailhost-mgmt
 
 ' >/etc/hosts"
-        case "$container" in
-            loghost )
-                echoverbose "Doing loghost specific setup"
-                incus exec "$container" -- apt-get -qq install mysql-server
-                incus exec "$container" -- apt-get -qq install rsyslog-mysql
-		incus exec "$container" -- apt-get -qq install rsyslog-relp
-		incus file push /etc/ssl/certs/rsyslog-ca.crt "$container"/etc/ssl/certs/rsyslog-ca.crt
-		incus file push /etc/ssl/certs/"$container"-rsyslog.crt "$container"/etc/ssl/certs/"$container"-rsyslog.crt
-		sudo incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
-                for configfile in etc-rsyslog.conf; do
-                    file="$container"-"$configfile"
-                    if [ ! -f $(dirname "$0")/"$file" ]; then
-                        echoverbose "Retrieving $container $configfile config file"
-                        if ! wget -q -O $(dirname "$0")/"$file" "$githubrepoURL"/"$file"; then
-                            cat <<EOF
-You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
-EOF
-                            exit 1
-                        fi
-                    fi
-                done
-                incus file push $(dirname "$0")/"$container"-etc-rsyslog.conf "$container"/etc/rsyslog.conf
-                incus exec "$container" -- systemctl restart rsyslog
-                ;;
-            mailhost )
-                # doing mailhost specific setup
-                # loghost rsyslog setup
-                incus file push /etc/ssl/certs/rsyslog-ca.crt "$container"/etc/ssl/certs/rsyslog-ca.crt
-		incus file push /etc/ssl/certs/"$container"-rsyslog.crt "$container"/etc/ssl/certs/"$container"-rsyslog.crt
-		sudo incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
-                for configfile in etc-rsyslog.d-loghost.conf; do
-                    file="$container"-"$configfile"
-                    if [ ! -f $(dirname "$0")/"$file" ]; then
-                        echoverbose "Retrieving $container $configfile config file"
-                        if ! wget -q -O $(dirname "$0")/"$file" "$githubrepoURL"/"$file"; then
-                            cat <<EOF
-You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
-EOF
-                            exit 1
-                        fi
-                    fi
-                done
-                incus file push $(dirname "$0")/"$container"-etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
-                # software installs
-                incus exec "$container" -- apt-get -qq install postfix dovecot-imapd mailutils apache2 roundcube
-                ;;
-            webhost )
-                # loghost rsyslog setup
-                incus file push /etc/ssl/certs/rsyslog-ca.crt "$container"/etc/ssl/certs/rsyslog-ca.crt
-		incus file push /etc/ssl/certs/"$container"-rsyslog.crt "$container"/etc/ssl/certs/"$container"-rsyslog.crt
-		sudo incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
-                for configfile in etc-rsyslog.d-loghost.conf; do
-                    file="$container"-"$configfile"
-                    if [ ! -f $(dirname "$0")/"$file" ]; then
-                        echoverbose "Retrieving $container $configfile config file"
-                        if ! wget -q -O $(dirname "$0")/"$file" "$githubrepoURL"/"$file"; then
-                            cat <<EOF
-You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
-EOF
-                            exit 1
-                        fi
-                    fi
-                done
-                incus file push $(dirname "$0")/"$container"-etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
-                # doing webhost specific setup
-                # incus exec "$container" -- apt-get -qq install apache2
-                ;;
-            nmshost )
-                # loghost rsyslog setup
-                incus file push /etc/ssl/certs/rsyslog-ca.crt "$container"/etc/ssl/certs/rsyslog-ca.crt
-		incus file push /etc/ssl/certs/"$container"-rsyslog.crt "$container"/etc/ssl/certs/"$container"-rsyslog.crt
-		sudo incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
-                for configfile in etc-rsyslog.d-loghost.conf; do
-                    file="$container"-"$configfile"
-                    if [ ! -f $(dirname "$0")/"$file" ]; then
-                        echoverbose "Retrieving $container $configfile config file"
-                        if ! wget -q -O $(dirname "$0")/"$file" "$githubrepoURL"/"$file"; then
-                            cat <<EOF
-You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
-EOF
-                            exit 1
-                        fi
-                    fi
-                done
-                incus file push $(dirname "$0")/"$container"-etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
-                # doing nmshost specific setup
-                ;;
-            proxyhost )
-                # loghost rsyslog setup
-                incus file push /etc/ssl/certs/rsyslog-ca.crt "$container"/etc/ssl/certs/rsyslog-ca.crt
-		incus file push /etc/ssl/certs/"$container"-rsyslog.crt "$container"/etc/ssl/certs/"$container"-rsyslog.crt
-		sudo incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
-                for configfile in etc-rsyslog.d-loghost.conf; do
-                    file="$container"-"$configfile"
-                    if [ ! -f $(dirname "$0")/"$file" ]; then
-                        echoverbose "Retrieving $container $configfile config file"
-                        if ! wget -q -O $(dirname "$0")/"$file" "$githubrepoURL"/"$file"; then
-                            cat <<EOF
-You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
-EOF
-                            exit 1
-                        fi
-                    fi
-                done
-                incus file push $(dirname "$0")/"$container"-etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
-                # doing proxyhost specific setup
-                incus exec "$container" -- apt-get -qq install squid
-                ;;
-            vpnhost )
-                # loghost rsyslog setup
-                incus file push /etc/ssl/certs/rsyslog-ca.crt "$container"/etc/ssl/certs/rsyslog-ca.crt
-		incus file push /etc/ssl/certs/"$container"-rsyslog.crt "$container"/etc/ssl/certs/"$container"-rsyslog.crt
-		sudo incus file push /etc/ssl/private/"$container"-rsyslog.key "$container"/etc/ssl/private/"$container"-rsyslog.key
-                for configfile in etc-rsyslog.d-loghost.conf; do
-                    file="$container"-"$configfile"
-                    if [ ! -f $(dirname "$0")/"$file" ]; then
-                        echoverbose "Retrieving $container $configfile config file"
-                        if ! wget -q -O $(dirname "$0")/"$file" "$githubrepoURL"/"$file"; then
-                            cat <<EOF
-You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
-EOF
-                            exit 1
-                        fi
-                    fi
-                done
-                incus file push $(dirname "$0")/"$container"-etc-rsyslog.d-loghost.conf "$container"/etc/rsyslog.d/loghost.conf
-                # doing vpnhost specific setup
-                # incus exec "$container" -- apt-get -qq install mysql-server
-                (cd ansible-files; ansible-playbook -i inventory.ini vpnsetup-playbook.yaml)
-                ;;
-        esac
-    fi
-    
-    echoverbose "Restarting $container"
-    incus restart "$container"
-    echo "Waiting for $container restart"
-#    while [ "$(incus info "$container" | grep '^Status: ')" != "Status: RUNNING" ]; do sleep 2; done
-    while ! incus list "$container" | grep -q eth1; do sleep 2; done
-    echoverbose "Adding $container to /etc/hosts file if necessary"
-    sudo sed -i -e "/ $container\$/d" -e "/ $container-mgmt\$/d" /etc/hosts
-    sudo sed -i -e '$a'"$containerlanip $container" -e '$a'"$containermgmtip $container-mgmt" /etc/hosts
-done
+	case "$container" in
+		loghost )
+			echoverbose "Doing $container specific setup"
+			# software installs first
+   			if ! packageinstalls "$container" mysql-server rsyslog-mysql rsyslog-relp; then
+	  			echoverbose "Package installs failed, leaving $container unconfigured"
+	  			continue
+	  		fi
+			# install config files from github repo
+			filepush "$container" etc-rsyslog.conf rsyslog 
+			;;
+		mailhost )
+			echoverbose "Doing $container specific setup"
+			# software installs first
+   			if ! packageinstalls "$container" postfix dovecot-imapd mailutils apache2 roundcube; then
+	  			echoverbose "Package installs failed, leaving $container unconfigured"
+	  			continue
+	  		fi
+			# install config files from github repo
+			filepush "$container" etc-rsyslog.d-loghost.conf rsyslog
+   			;;
+		webhost )
+			echoverbose "Doing $container specific setup"
+			# software installs first
+   			if ! packageinstalls "$container" postfix dovecot-imapd mailutils apache2 roundcube; then
+	  			echoverbose "Package installs failed, leaving $container unconfigured"
+	  			continue
+	  		fi
+			# install config files from github repo
+			filepush "$container" etc-rsyslog.d-loghost.conf rsyslog
+			;;
+		nmshost )
+			echoverbose "Doing $container specific setup"
+			# software installs first
+   			if ! packageinstalls "$container" apache2; then
+	  			echoverbose "Package installs failed, leaving $container unconfigured"
+	  			continue
+	  		fi
+			# install config files from github repo
+			filepush "$container" etc-rsyslog.d-loghost.conf rsyslog
+			;;
+		proxyhost )
+			echoverbose "Doing $container specific setup"
+			# software installs first
+   			if ! packageinstalls "$container" squid; then
+	  			echoverbose "Package installs failed, leaving $container unconfigured"
+	  			continue
+	  		fi
+			# install config files from github repo
+			filepush "$container" etc-rsyslog.d-loghost.conf rsyslog
+			;;
+		vpnhost )
+			echoverbose "Doing $container specific setup"
+			# software installs first
+   			if ! packageinstalls "$container" apache2; then
+	  			echoverbose "Package installs failed, leaving $container unconfigured"
+	  			continue
+	  		fi
+			# install config files from github repo
+			filepush "$container" etc-rsyslog.d-loghost.conf rsyslog
+            (cd ansible-files; ansible-playbook -i inventory.ini vpnsetup-playbook.yaml)
+			;;
+	esac
+fi
