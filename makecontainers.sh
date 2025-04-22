@@ -676,7 +676,7 @@ function filepush {
 	fi
 	if [ ! -f $(dirname "$0")/"$file" ]; then
 		echoverbose "Retrieving $container $configfile config file"
-		if ! wget -q -O $(dirname "$0")/"$file" "$githubrepoURL"/"$file"; then
+		if ! wget -q -O $(dirname "$0")/"$file" "$githubrepoURLprefix"/"$file"; then
 			cat <<EOF
 You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
 EOF
@@ -723,6 +723,8 @@ if [ "$nets1037" = "true" ]; then
 ff02::1		ip6-allnodes
 ff02::2		ip6-allrouters
 
+192.168.16.1 hostvm
+172.16.1.1 hostvm-mgmt
 192.168.16.2 openwrt
 172.16.1.2 openwrt-mgmt
 192.168.16.4 loghost
