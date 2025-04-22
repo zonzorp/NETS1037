@@ -678,6 +678,8 @@ function filepush {
 	fi
 	if [ ! -f $(dirname "$0")/"$file" ]; then
 		echoverbose "Retrieving $container $configfile config file"
+  		filedir=$(dirname "$0")/$file:h
+  		[ ! -d $filedir ] && mkdir -p $filedir
 		if ! wget -q -O $(dirname "$0")/"$file" "$githubrepoURLprefix"/"$file"; then
 			cat <<EOF
 You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
