@@ -375,15 +375,6 @@ EOF
     echoverbose "Retrieving hostkey for $container"
     ssh-keyscan -H "$container"-mgmt >>~/.ssh/known_hosts 2>/dev/null >/dev/null
 
-    # create remoteadmin user in container and add our pubkey to authorized_keys
-	echoverbose "Adding remote admin user '$remoteadmin' to $container"
-    incus exec "$container" -- useradd -m -c "SSH remote admin access account" -s /bin/bash -o -k UID_MIN=0 -u 0 "$remoteadmin"
-    incus exec "$container" mkdir "/home/$remoteadmin/.ssh"
-    incus exec "$container" chmod 700 "/home/$remoteadmin/.ssh"
-    incus exec "$container" cp "/home/$remoteadmin/.ssh/id_ed25519.pub" "/home/$remoteadmin/.ssh/authorized_keys"
-    incus exec "$container" chmod 600 "/home/$remoteadmin/.ssh/authorized_keys"
-    incus exec "$container" -- chown -R "$remoteadmin" "/home/$remoteadmin"
-
 	# create account for current user in container with our current keys and add our pubkey to authorized_keys
     username="$(id -un)"
     userdescrip="$(grep ^$username: /etc/passwd|cut -d: -f5)"
@@ -399,6 +390,15 @@ EOF
     incus exec "$container" cp "/home/$username/.ssh/id_ed25519.pub" "/home/$username/.ssh/authorized_keys"
     incus exec "$container" chmod 600 "/home/$username/.ssh/authorized_keys"
     incus exec "$container" -- chown -R "$username" "/home/$username"
+
+    # create remoteadmin user in container and add our pubkey to authorized_keys
+	echoverbose "Adding remote admin user '$remoteadmin' to $container"
+    incus exec "$container" -- useradd -m -c "SSH remote admin access account" -s /bin/bash -o -k UID_MIN=0 -u 0 "$remoteadmin"
+    incus exec "$container" mkdir "/home/$remoteadmin/.ssh"
+    incus exec "$container" chmod 700 "/home/$remoteadmin/.ssh"
+    incus exec "$container" cp "/home/$username/.ssh/id_ed25519.pub" "/home/$remoteadmin/.ssh/authorized_keys"
+    incus exec "$container" chmod 600 "/home/$remoteadmin/.ssh/authorized_keys"
+    incus exec "$container" -- chown -R "$remoteadmin" "/home/$remoteadmin"
 
 	# set hostname in the container
     echoverbose "Setting $container hostname"
