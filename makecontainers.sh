@@ -741,42 +741,22 @@ if [ "$nets1037" = "true" ]; then
 	echoverbose "Install certs as needed"
     build-and-push-certs
     for container in loghost mailhost webhost proxyhost vpnhost nmshost; do
-	echoverbose "Setting up /etc/hosts files on $container"
-	incus exec "$container" -- sh -c "echo '
-127.0.0.1	localhost
-::1		localhost ip6-localhost ip6-loopback
-ff02::1		ip6-allnodes
-ff02::2		ip6-allrouters
+		# override defaultcontainer hosts file with course-specific hosts file
+		echoverbose "Setting up /etc/hosts files on $container"
+		filepush "$container" etc/hosts ""
 
-192.168.16.1 hostvm
-172.16.1.1 hostvm-mgmt
-192.168.16.2 openwrt
-172.16.1.2 openwrt-mgmt
-192.168.16.4 loghost
-172.16.1.4 loghost-mgmt
-192.168.16.5 webhost
-172.16.1.5 webhost-mgmt
-192.168.16.6 nmshost
-172.16.1.6 nmshost-mgmt
-192.168.16.7 proxyhost
-172.16.1.7 proxyhost-mgmt
-192.168.16.8 vpnhost
-172.16.1.8 vpnhost-mgmt
-192.168.16.9 mailhost
-172.16.1.9 mailhost-mgmt
-
-' >/etc/hosts"
-	case "$container" in
-		loghost )
-			echoverbose "Doing $container specific setup"
-			# software installs first
-   			if ! packageinstalls "$container" mysql-server rsyslog-mysql rsyslog-relp; then
-	  			echoverbose "Package installs failed, leaving $container unconfigured"
-	  			continue
-	  		fi
-			# install config files from github repo
-			filepush "$container" etc-rsyslog.conf rsyslog 
-			;;
+  		# do per-host setups
+		case "$container" in
+			loghost )
+				echoverbose "Doing $container specific setup"
+				# software installs first
+   				if ! packageinstalls "$container" mysql-server rsyslog-mysql rsyslog-relp; then
+	  				echoverbose "Package installs failed, leaving $container unconfigured"
+	  				continue
+	  			fi
+				# install config files from github repo
+				filepush "$container" etc-rsyslog.conf rsyslog 
+				;;
 		mailhost )
 			echoverbose "Doing $container specific setup"
 			# software installs first
