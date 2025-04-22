@@ -30,17 +30,21 @@ function error-exit {
 
 # install incus if necessary, adding user to incus groups as needed
 function incus-install-check {
-  which incus >/dev/null && return
-  if [ "$NAME" = "Ubuntu" ] && [ "$VERSION_ID" = "22.04" ]; then
-    if [ ! -d /etc/apt/keyrings ]; then
-      sudo mkdir -p /etc/apt/keyrings || error-exit "Could not begin to install incus by making keyrings directory"
-    fi
-    if [ ! -f /etc/apt/keyrings/zabbly.asc ]; then
-      sudo -- apt-get -qq update && sudo -- apt-get -qq install curl || error-exit "Could not perform apt-get update, are we online?"
-      sudo curl -fsSL https://pkgs.zabbly.com/key.asc -o /etc/apt/keyrings/zabbly.asc || error-exit "Couldn't add zabbly key to apt keyring"
-    fi
-    zabblysourcesfile=/etc/apt/sources.list.d/zabbly-incus-stable.sources
-    zabblysourceslistcontent="$(cat <<EOF
+	which incus >/dev/null && return
+	if [ "$NAME" = "Ubuntu" ] && [ "$VERSION_ID" = "22.04" ]; then
+		if [ ! -d /etc/apt/keyrings ]; then
+		sudo mkdir -p /etc/apt/keyrings || error-exit "Could not begin to install incus by making keyrings directory"
+		fi
+		if [ ! -f /etc/apt/keyrings/zabbly.asc ]; then
+			if sudo -- apt-get -qq update; then
+				if ! sudo -- apt-get -qq install curl; then
+					error-exit "Could not perform apt-get update, are we online?"
+				fi
+			fi
+			sudo curl -fsSL https://pkgs.zabbly.com/key.asc -o /etc/apt/keyrings/zabbly.asc || error-exit "Couldn't add zabbly key to apt keyring"
+		fi
+		zabblysourcesfile=/etc/apt/sources.list.d/zabbly-incus-stable.sources
+		zabblysourceslistcontent="$(cat <<EOF
 Enabled: yes
 Types: deb
 URIs: https://pkgs.zabbly.com/incus/stable
@@ -50,37 +54,37 @@ Architectures: $(dpkg --print-architecture)
 Signed-By: /etc/apt/keyrings/zabbly.asc
 EOF
 )"
-    if ! echo "$zabblysourceslistcontent" | cmp -s "$zabblysourcesfile"; then
-      echo "$zabblysourceslistcontent" | sudo tee "$zabblysourcesfile" >/dev/null || error-exit "Unable to set zabbly repo sources file content for apt"
-      sudo -- apt-get -qq update || error-exit "Unable to run apt update successfully"
-    fi
-  fi
-  sudo -- apt-get -qq install incus >/dev/null || error-exit "Unable to install incus package"
+		if ! echo "$zabblysourceslistcontent" | cmp -s "$zabblysourcesfile"; then
+			echo "$zabblysourceslistcontent" | sudo tee "$zabblysourcesfile" >/dev/null || error-exit "Unable to set zabbly repo sources file content for apt"
+			sudo -- apt-get -qq update || error-exit "Unable to run apt update successfully"
+		fi
+	fi
+	sudo -- apt-get -qq install incus >/dev/null || error-exit "Unable to install incus package"
 
 # if incus was just installed, then we need to add ourselves to the new incus groups
 # and rerun makecontainers using the new group perms
-  incususer=${1:-$(id -un)}
-  if [ $incususer != $(id -un) ]; then
-    if sudo usermod -a -G incus,incus-admin "$incususer"; then
-      echoverbose "
+	incususer=${1:-$(id -un)}
+	if [ $incususer != $(id -un) ]; then
+		if sudo usermod -a -G incus,incus-admin "$incususer"; then
+			echoverbose "
 ---------WARNING--------
 User '$incususer' added to incus and incusadmin group.
 Containers will be created using that account.
 You will need to login to that account if you want to use the incus command to manage your containers after this script finishes.
 ------------------------
 "
-    fi
-  elif ! id -Gn|grep -q incus-admin; then
-    if sudo usermod -a -G incus,incus-admin "$(id -un)"; then
-      echoverbose "
+		fi
+	elif ! id -Gn|grep -q incus-admin; then
+		if sudo usermod -a -G incus,incus-admin "$(id -un)"; then
+			echoverbose "
 User '$(id -un)' added to incus and incusadmin groups.
 In order to use this new permission, a new login shell is needed.
 If you want to manage your containers using the incus command after this script finishes, you must fully logout.
 Ubuntu GUI logout doesn't logout, 'pkill systemd' or a reboot is required to actually logout.
 Continuing container creation now.
 "
-    fi
-  fi
+		fi
+	fi
 }
 
 # This function deletes existing lab incus containers
@@ -245,9 +249,6 @@ EOF
   bolt-install
 }
 
-githubrepo=https://github.com/zonzorp/NETS1037
-githubrepoURLprefix="$githubrepo"/raw/main
-
 lannetnum="192.168.16"
 mgmtnetnum="172.16.1"
 bridgeintf=incusbr0
@@ -259,6 +260,8 @@ startinghostnum=241
 remoteadmin="remoteadmin"
 numcontainers=1
 verbose=false
+githubrepo=https://github.com/zonzorp/NETS1037
+githubrepoURLprefix="$githubrepo"/raw/main
 
 sudo-check
 
