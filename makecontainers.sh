@@ -671,7 +671,7 @@ function filepush {
 	target="$1"
 	configfile="$2"
  	services="$3"
-	file="$target"-"$configfile"
+	file="$target"/"$configfile"
 	if [ -z "$target" -o -z "$configfile" ]; then
  		echoverbose "filepush error: target='$target' configfile='$configfile' services='$services'"
 		return 1
@@ -686,9 +686,8 @@ EOF
 		fi
 	fi
 	# push config files to container, restarting services as needed
- 	destfile="$(sed s,-,/, <<< '$file')"
-	echoverbose "Pushing $file to $dest"
-	if ! incus file push $(dirname "$0")/"$file" "$destfile"; then
+	echoverbose "Pushing $configfile to $target"
+	if ! incus file push $(dirname "$0")/"$file" "$file"; then
 		echoverbose "incus file push failed"
   		return 1
 	fi
