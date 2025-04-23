@@ -16,13 +16,13 @@ if ping -c 1 pfsense >/dev/null; then
     ((score++))
     if ssh admin@pfsense true >/dev/null; then
 	echo " and responds to ssh"
-        ((score++))
+        ((score+=3))
     else
         echo " but does not respond to ssh"
     fi
     if ssh admin@pfsense -- ping -c 1 google.com >/dev/null; then
 	echo " and can ping google"
-        ((score++))
+        ((score+=2))
     else
         echo " but cannot ping google"
     fi
@@ -36,13 +36,13 @@ for host in loghost mailhost webhost proxyhost nmshost; do
     ((score++))
     if ssh $host true >/dev/null; then
         echo " and responds to ssh"
-        ((score++))
+        ((score+=3))
     else
         echo " but does not respond to ssh"
     fi
     if ssh $host -- ping -c 1 google.com >/dev/null; then 
         echo " and can ping google"
-        ((score++))
+        ((score+=2))
     else 
         echo " but cannot ping google"
     fi
