@@ -3,6 +3,12 @@
 username="$(id -un)"
 mid="$(hostnamectl |grep -i machine)"
 
+echo "
+Report for $mid by $username
+$(date)
+================
+"
+
 score=0
 
 if ping -c 1 pfsense >/dev/null; then
@@ -45,3 +51,4 @@ else
 fi
 done
 
+echo "Score: $score"
