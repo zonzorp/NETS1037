@@ -251,15 +251,14 @@ function build-and-push-certs {
     keydir=/etc/ssl/private
     certdir=/etc/ssl/certs
     csrdir=/etc/ssl/csrs
-    cakeyfile=$keydir/$server.key
-    certfile=$certdir/$server.crt
+    cakeyfile=$keydir/ca.key
     cacertfile=$certdir/ca.crt
     if [ ! -d $csrdir ]; then
 	    echoverbose "Making csr directory"
 	    sudo mkdir $csrdir
 	 fi
     # CA first
-    if [ ! -f $keyfile ]; then
+    if [ ! -f $cakeyfile ]; then
 	    echoverbose "Creating CA key"
 	    sudo openssl genrsa -out $cakeyfile 4096
 	fi
@@ -268,22 +267,22 @@ function build-and-push-certs {
   		sudo openssl req -x509 -new -nodes -key $cakeyfile -sha256 -days 3650 -subj "/CN=NETS1037" -out $cacertfile
 	fi
     for server in loghost mailhost webhost proxyhost vpnhost nmshost; do
-        keyfile=$keydir/$server.key
-        certfile=$certdir/$server.crt
-        csrfile=$csrdir/$server.csr
-        if [ ! -f $keyfile ]; then
+        serverkeyfile=$keydir/$server.key
+        servercertfile=$certdir/$server.crt
+        servercsrfile=$csrdir/$server.csr
+        if [ ! -f $serverkeyfile ]; then
 		    echoverbose "Creating $server key"
-	        sudo openssl genrsa -out $keyfile 2048
+	        sudo openssl genrsa -out $serverkeyfile 2048
         fi
-        if [ -f $keyfile -a ! -f $certfile ]; then
+        if [ -f $serverkeyfile -a ! -f $servercertfile ]; then
 			echoverbose "Creating $server certificate"
-	        sudo openssl req -new -key $keykeyfile -subj "/CN=$server-mgmt" -out $csrfile
-	        sudo openssl x509 -req -in $csrfile -CA $cacertfile -CAkey $cakeyfile -CAcreateserial -out $certfile -days 365 -sha256
+	        sudo openssl req -new -key $serverkeyfile -subj "/CN=$server-mgmt" -out $servercsrfile
+	        sudo openssl x509 -req -in $servercsrfile -CA $cacertfile -CAkey $cakeyfile -CAcreateserial -out $servercertfile -days 365 -sha256
         fi
 		echoverbose "Pushing CA cert and $server key and cert"
         incus file push $cacertfile $server$cacertfile
-        incus file push $certfile $server$certfile
-        sudo incus file push $keyfile $server$keyfile
+        incus file push $servercertfile $server$servercertfile
+        sudo incus file push $serverkeyfile $server$serverkeyfile
     done
 }
 
