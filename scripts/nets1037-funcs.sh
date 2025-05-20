@@ -290,17 +290,18 @@ function build-and-push-certs {
 function filepush {
 	# retrieve config files from github repo
 	target="$1"
-	configfile="$2"
- 	services="$3"
+        lab="$2"
+	configfile="$3"
+ 	services="$4"
 	if [ -z "$target" -o -z "$configfile" ]; then
- 		echoverbose "filepush error: target='$target' configfile='$configfile' services='$services'"
+ 		echoverbose "filepush error: target='$target' lab='$lab' configfile='$configfile' services='$services'"
 		return 1
 	fi
-   	filedir="$scriptdir/$target/$(dirname $configfile)"
+   	filedir="$scriptdir/$target/$lab/$(dirname $configfile)"
   	[ ! -d "$filedir" ] && mkdir -p "$filedir"
-	if [ ! -f "$scriptdir/$target/$configfile" ]; then
+	if [ ! -f "$scriptdir/$target/$lab/$configfile" ]; then
 		echoverbose "Retrieving $container $configfile config file"
-		if ! wget -q -O "$scriptdir/$target/$configfile" "$githubrepoURLprefix/$target/$configfile"; then
+		if ! wget -q -O "$scriptdir/$target/$lab/$configfile" "$githubrepoURLprefix/$target/$lab/$configfile"; then
 			cat <<EOF
 You need the "$configfile" file from $githubrepo in order to use this script. Automatic retrieval of the file has failed. Are we online?
 EOF
@@ -309,7 +310,7 @@ EOF
 	fi
 	# push config files to container, restarting services as needed
 	echoverbose "Pushing $configfile to $target"
-	if ! incus file push "$scriptdir/$target/$configfile" "$target/$configfile"; then
+	if ! incus file push "$scriptdir/$target/$lab/$configfile" "$target/$configfile"; then
 		echoverbose "incus file push failed"
   		return 1
 	fi
