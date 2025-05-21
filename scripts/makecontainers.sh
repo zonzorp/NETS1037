@@ -474,7 +474,7 @@ if [ "$nets1037" = "true" ]; then
 	  			continue
 	  		fi
 			# install config files from github repo
-			filepush "$container" etc/rsyslog.d/loghost.conf rsyslog
+			filepush "$container" 1 etc/rsyslog.d/loghost.conf rsyslog
 			;;
 		vpnhost )
 			echoverbose "Doing $container specific setup"
