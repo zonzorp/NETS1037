@@ -26,7 +26,7 @@ function error-exit {
 # install incus if necessary, adding user to incus groups as needed
 function incus-install-check {
 	which incus >/dev/null && return
-	if [ "$NAME" = "Ubuntu" ] && [ "$VERSION_ID" = "22.04" ]; then
+#	if [ "$NAME" = "Ubuntu" ] && [ "$VERSION_ID" = "22.04" ]; then
 		if [ ! -d /etc/apt/keyrings ]; then
 		sudo mkdir -p /etc/apt/keyrings || error-exit "Could not begin to install incus by making keyrings directory"
 		fi
@@ -53,7 +53,7 @@ EOF
 			echo "$zabblysourceslistcontent" | sudo tee "$zabblysourcesfile" >/dev/null || error-exit "Unable to set zabbly repo sources file content for apt"
 			sudo -- apt-get -qq update || error-exit "Unable to run apt update successfully"
 		fi
-	fi
+#	fi
 	sudo -- apt-get -qq install incus >/dev/null || error-exit "Unable to install incus package"
 
 # if incus was just installed, then we need to add ourselves to the new incus groups
