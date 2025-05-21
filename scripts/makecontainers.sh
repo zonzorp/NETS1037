@@ -196,7 +196,7 @@ if ! ip a s incusbr0 >&/dev/null; then
   fi
 elif [ "$fresh" = "yes" ]; then
   delete-incus-containers
-  [ "$nets1037' = "true" ] && [ -d "$scriptdir" ] && ( cd $scriptdir && rm -rf loghost mailhost webhost nmshost proxyhost vpnhost )
+  [ "$nets1037" = "true" ] && [ -d "$scriptdir" ] && ( cd $scriptdir && rm -rf loghost mailhost webhost nmshost proxyhost vpnhost )
 fi
 
 # create lan and mgmt networks in incus
