@@ -440,7 +440,7 @@ if [ "$nets1037" = "true" ]; then
 		mailhost )
 			echoverbose "Doing $container specific setup"
 			# software installs first
-   			if ! packageinstalls "$container" postfix dovecot-imapd mailutils apache2 roundcube; then
+   			if ! packageinstalls "$container" mysql-server postfix dovecot-imapd mailutils apache2 roundcube; then
 	  			echoverbose "Package installs failed, leaving $container unconfigured"
 	  			continue
 	  		fi
