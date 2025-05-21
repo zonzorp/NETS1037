@@ -333,6 +333,8 @@ network:
             addresses: [$containermgmtip/24]
 EOF
 	chmod 600 "$scriptdir/$container$netplanfile"
+	# wait for container networking to come up
+    while ! incus list "$container" | grep -q eth1; do sleep 2; done
 	echoverbose "Pushing $netplanfile to $container"
 	incus file push "$scriptdir/$container$netplanfile" "$container$netplanfile"
     incus exec "$container" -- bash -c '[ -d /etc/cloud ] && echo "network: {config: disabled}" > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg'
