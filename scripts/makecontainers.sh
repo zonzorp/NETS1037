@@ -9,7 +9,7 @@ scriptdir="$(dirname $0)"
 
 if [ ! -f "$scriptdir"/nets1037-funcs.sh ]; then
    echo "Retrieving script library file"
-   if ! wget -q -O "$scriptdir"/nets1037-funcs.sh "$githubrepoURLprefix"/nets1037-funcs.sh; then
+   if ! wget -q -O "$scriptdir"/nets1037-funcs.sh "$githubrepoURLprefix"/scripts/nets1037-funcs.sh; then
      echo "You need nets1037-funcs.sh from the course github repo in order to use this script."
      echo "Automatic retrieval of the file has failed. Are you online?"
      exit 1
