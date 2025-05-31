@@ -176,6 +176,9 @@ verbose-report "Last name : $lastname"
 verbose-report "Student Number: $studentnumber"
 verbose-report "Host name: $hostname"
 
+
+# per lab checks now
+
 if [[ $labnum =~ "1" ]]; then
   lab_header "01"
   labscore=0
@@ -234,6 +237,64 @@ if [[ $labnum =~ "1" ]]; then
     ((labmaxscore+=5))
   done
   
+  scores-report "Lab 01 score is $labscore out of $labmaxscore"
+  score=$((score + labscore))
+  maxscore=$((maxscore + labmaxscore))
+  scores-report "   Running score is $score out of $maxscore"
+  scorespostdata="course=$course&semester=$semester&studentnumber=$studentnumber&firstname=$firstname&lastname=$lastname&lab=1&score=$labscore&maxscore=$labmaxscore"
+  curl -s -A "Mozilla/4.0" -d "$scorespostdata" $labscoresURL || problem-report "Unable to post scores to website"
+fi
+
+if [[ $labnum =~ "1" ]]; then
+  lab_header "01"
+  labscore=0
+  labmaxscore=0
+  # router first
+  host=loghost
+  if ! ping -c 1 $host >/dev/null; then
+    problem-report "Unable to ping $host"
+    problem-report "Verify that $host is up and can talk to the private network"
+  else
+    verbose-report "$host responds to ping"
+  fi
+
+mysqlrecordcount="$(sudo mysql -u root  <<< 'select count(*) from Syslog.SystemEvents;')"
+if [ "$mysqlrecordcount" ] && [ "$mysqlrecordcount" -gt 0 ]; then
+  echo "mysql db has SystemEvents records"
+  ((score+=3))
+else
+    echo "SystemEvents table is empty"
+fi
+if sudo ss -tulpn |grep -q 'udp.*0.0.0.0:514.*0.0.0.0:.*syslogd' ; then
+  echo "rsyslog is listening to the network on 514/udp"
+  ((score+=3))
+else
+  echo "rsyslog is not listening to 514/udp for syslog on the network"
+fi
+if sudo ufw status 2>&1 |grep '514/udp.*ALLOW'; then
+	echo "ufw allows 514/udp"
+  ((score+=2))
+else
+  echo "UFW is not allowing syslog traffic on 514/udp"
+fi
+
+hostsinsyslog="$(sudo awk '{print $2}' /var/log/syslog|sort|uniq -c)"
+hostsindb="$(sudo mysql -u root <<< 'select distinct FromHost, count(*) from Syslog.SystemEvents group by FromHost;')"
+for host in loghost mailhost webhost proxyhost nmshost; do
+  if "$(sudo grep -aicwq $host /var/log/syslog)"; then 
+    echo "$host found in /var/log/syslog"
+    ((score++))
+  else
+    echo "$host not found in /var/log/syslog"
+  fi
+  if [ "$(sudo mysql -u root <<< 'select distinct count(*) from Syslog.SystemEvents where FromHost like $host%;')" -gt 0 ]; then
+    echo "$host has records in the SystemEvents table"
+    ((score+=3))
+  else
+        echo "$host not found in the SystemEvents table"
+  fi
+done
+
   scores-report "Lab 01 score is $labscore out of $labmaxscore"
   score=$((score + labscore))
   maxscore=$((maxscore + labmaxscore))
