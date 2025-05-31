@@ -264,9 +264,9 @@ if [[ $labnum =~ "2" ]]; then
       else
         verbose-report "loghost responds to ping"
       fi
-      if ! ssh loghost true >/dev/null; then
-        problem-report "Unable to access loghost"
-        problem-report "Verify that loghost is up and providing ssh service"
+      if ! ssh root@loghost true >/dev/null; then
+        problem-report "Unable to access root on loghost"
+        problem-report "Verify that loghost is up and providing ssh service and that on loghost you have copied the authorized_keys file from your ~/.ssh directory to the /root/.ssh directory"
       else
         verbose-report "loghost is accessible using ssh"
       fi
