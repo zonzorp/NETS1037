@@ -8,16 +8,16 @@ function usage {
 }
 
 function problem-report {
-	tee -a $logfile <<< ">>> Problem found: $1"
+	[ ! "$scoreonly" ] && tee -a $logfile <<< ">>> Problem found: $1"
 }
 
 function verbose-report {
-	[ "$verbose" = "yes" ] && echo "$1"
-	echo "$1" >> $logfile
+	[ ! "$scoreonly" ] && [ "$verbose" = "yes" ] && echo "$1"
+	[ ! "$scoreonly" ] && echo "$1" >> $logfile
 }
 
 function scores-report {
-	tee -a $logfile <<< "$1"
+	[ ! "$scoreonly" ] && tee -a $logfile <<< "$1"
 }
 
 # function to print out header for output report section
