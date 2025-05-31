@@ -279,8 +279,9 @@ if [[ $labnum =~ "2" ]]; then
           if [ "$label" != "Scores:" ]; then
       	    problem-report "Remote run of lab checks on loghost failed to produce correct output: '$label $loghostlabscore $loghostlabmaxscore'"
           else
-            labscore=loghostlabscore
-	    labmaxscore=loghostlabmaxscore
+            labscore=$loghostlabscore
+	    labmaxscore=$loghostlabmaxscore
+            scores-report "Lab 02 score from loghost is $labscore out of $labmaxscore"
           fi
         done
 	;;
@@ -332,7 +333,7 @@ if [[ $labnum =~ "2" ]]; then
       ;;
   esac
 
-  scores-report "Lab 02 score from loghost is $labscore out of $labmaxscore"
+  scores-report "Lab 02 score is $labscore out of $labmaxscore"
   score=$((score + labscore))
   maxscore=$((maxscore + labmaxscore))
   scores-report "   Running score is $score out of $maxscore"
