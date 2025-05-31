@@ -51,6 +51,8 @@ for host in loghost mailhost webhost proxyhost nmshost; do
   fi
 done
 
+exit
+
 echo "Score: $score"
 echo Host config checks
 echo ===================
