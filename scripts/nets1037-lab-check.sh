@@ -316,7 +316,7 @@ if [[ $labnum =~ "2" ]]; then
           problem-report "loghost: $host not found in /var/log/syslog"
         fi
         ((labmaxscore+=5))
-        if [ "$(sudo -S mysql -u root <<< 'select distinct count(*) from Syslog.SystemEvents where FromHost like $host%;')" -gt 0 ]; then
+        if [ "$(sudo -S mysql -u root <<< 'select count(*) from Syslog.SystemEvents where FromHost like $host%;')" -gt 0 ]; then
           verbose-report "loghost: $host has records in the SystemEvents table"
           ((labscore+=5))
         else
