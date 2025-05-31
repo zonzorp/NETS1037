@@ -15,7 +15,7 @@ maxscore=0
 labscoresURL="https://zonzorp.net/gc/postlabscores.php"
 datetime=$(date +"%Y-%m-%d@%H:%M:%S%p")
 logfile="/tmp/sc$datetime$$.log"
-course="COMP1071"
+course="NETS1037"
 case `date +%m` in
 01|02|03|04) semester="W`date +%y`";;
 05|06|07|08) semester="S`date +%y`";;
@@ -26,8 +26,20 @@ ufwAlwaysOn="yes"
 . /etc/os-release
 
 # add in functions that are helpful
-
-source nets1037-funcs.sh
+githubrepo=https://github.com/zonzorp/NETS1037
+githubrepoURLprefix="$githubrepo"/raw/main
+scriptdir="$(dirname $0)"
+for script in nets1037-funcs.sh nets1037-grading-funcs.sh; do
+  if [ ! -f "$scriptdir"/nets1037-funcs.sh ]; then
+    echo "Retrieving script library file"
+    if ! wget -q -O "$scriptdir"/nets1037-funcs.sh "$githubrepoURLprefix"/scripts/nets1037-funcs.sh; then
+       echo "You need nets1037-funcs.sh from the course github repo in order to use this script."
+       echo "Automatic retrieval of the file has failed. Are you online?"
+       exit 1
+    fi
+  fi
+done
+source "$scriptdir"/nets1037-funcs.sh
 source nets1037-grading-funcs.sh
 
 ############
@@ -85,20 +97,21 @@ while [ $# -gt 0 ]; do
 done
 
 if [ "$skipUpdate" = "no" ]; then
-	echo "Checking if script is up to date, please wait"
- script=loghost-checker.sh
-	wget -nv -O $script-new https://zonzorp.github.io/NETS1037/raw/main/scripts/$script >& /dev/null
-	diff $script $script-new >& /dev/null
-	if [ "$?" != "0" -a -s $script-new ]; then
-		mv $script-new $script
-		chmod +x $script
-		echo "$script updated"
-		$script -s "$@"
-		rm $logfile # this logfile is pointless, discard it
-		exit
-	else
-		rm $script-new
-	fi
+  echo "Checking if script is up to date, please wait"
+  for script in loghost-checker.sh nets1037-funcs.sh nets1037-grading-funcs.sh; do
+    wget -nv -O "$scriptdir"/$script-new "$githubrepoURLprefix"/scripts/$script >& /dev/null
+    diff "$scriptdir"/$script "$scriptdir"/$script-new >& /dev/null
+    if [ "$?" != "0" -a -s "$scriptdir"/$script-new ]; then
+      mv "$scriptdir"/$script-new "$scriptdir"/$script
+      chmod +x "$scriptdir"/$script
+      echo ""$scriptdir"/$script updated"
+      "$scriptdir"/$script -s "$@"
+      rm $logfile # this logfile is pointless, discard it
+      exit
+    else
+      rm "$scriptdir"/$script-new
+    fi
+  done
 fi
 
 cat <<EOF
