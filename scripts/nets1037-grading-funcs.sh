@@ -110,3 +110,19 @@ function check_ufw {
 		((labmaxscore+=2))
 	fi
 }
+
+function curl-check {
+  if ! which curl; then
+    if ! sudo apt-get update; then
+      problem-report "Unable to run apt-get update successfuly, are we online?"
+      return 1
+    fi
+    if ! sudo apt-get -qq install curl; then
+      problem-report "Unable to apt-get -qq install curl, is the disk full or the ubuntu repo having problems?"
+      return 1
+    fi
+    verbose-report "curl installed"
+  else
+    verbose-report "curl found"
+  fi
+}
