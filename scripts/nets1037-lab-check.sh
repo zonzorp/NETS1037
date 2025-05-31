@@ -284,7 +284,7 @@ if [[ $labnum =~ "2" ]]; then
             scores-report "Lab 02 score from loghost is $labscore out of $labmaxscore"
           fi
         done
-	;;
+      ;;
 # loghost checks the db and logfiles for received logs and firewall rule
     loghost )
       package_checks mailutils mysql-server rsyslog-mysql
