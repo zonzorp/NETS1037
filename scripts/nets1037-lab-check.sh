@@ -275,15 +275,13 @@ if [[ $labnum =~ "2" ]]; then
       scp -q "$scriptdir/$scriptname" "$scriptdir/nets1037-funcs.sh" "$scriptdir/nets1037-grading-funcs.sh" root@loghost:/root
       [ "$verbose" = "yes" ] && ssh root@loghost -- /root/"$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 -v -s
       read label loghostlabscore loghostlabmaxscore <<< "$(ssh root@loghost -- /root/$scriptname $firstname $lastname $studentnumber -l 2 -s -o)"
-      #  while read label loghostlabscore loghostlabmaxscore; do
-      #    if [ "$label" != "Scores:" ]; then
-      #	    problem-report "Remote run of lab checks on loghost failed to produce correct output: '$label $loghostlabscore $loghostlabmaxscore'"
-      #    else
-      #      labscore=$loghostlabscore
-      #      labmaxscore=$loghostlabmaxscore
-            scores-report "Lab 02 score from loghost is $labscore out of $labmaxscore"
-      #    fi
-      #  done
+      if [ "$label" != "Scores:" ]; then
+        problem-report "Remote run of lab checks on loghost failed to produce correct output: '$label $loghostlabscore $loghostlabmaxscore'"
+      else
+        labscore=$loghostlabscore
+        labmaxscore=$loghostlabmaxscore
+        scores-report "Lab 02 score from loghost is $labscore out of $labmaxscore"
+      fi
       ;;
 # loghost checks the db and logfiles for received logs and firewall rule
     loghost )
