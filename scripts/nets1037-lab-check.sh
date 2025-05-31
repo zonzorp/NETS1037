@@ -310,7 +310,7 @@ if [[ $labnum =~ "2" ]]; then
       # hostsinsyslog="$(awk '{print $2}' /var/log/syslog|sort|uniq -c)"
       # which mysql >/dev/null && hostsindb="$(mysql -u root <<< 'select distinct FromHost, count(*) from Syslog.SystemEvents group by FromHost;')"
       for host in loghost mailhost webhost proxyhost nmshost; do
-        if "$(awk '{print $2}' /var/log/syslog|grep -iq $host)"; then 
+        if awk '{print $2}' /var/log/syslog|grep -iq $host; then 
           verbose-report "loghost: logs from $host found in /var/log/syslog"
           ((labscore+=5))
         else
