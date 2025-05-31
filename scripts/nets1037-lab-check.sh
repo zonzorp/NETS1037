@@ -272,7 +272,7 @@ if [[ $labnum =~ "2" ]]; then
       fi
       # run check on loghost remotely
       
-      scp "$scriptdir/$scriptname" loghost:
+      scp -q "$scriptdir/$scriptname" loghost:
       [ "$verbose" = "yes" ] && ssh loghost -- ~/"$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 -v
       ssh loghost -- ~/"$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 --scoreonly | read label loghostlabscore loghostlabmaxscore
       if [ "$label" != "Scores:" ]; then
