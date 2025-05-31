@@ -186,7 +186,7 @@ if [[ $labnum =~ "1" ]]; then
     ((labscore++))
   fi
   ((labmaxscore++))
-  for host in pfsense loghost mailhost webhost proxyhost nmshost; do
+  for host in loghost mailhost webhost proxyhost nmshost; do
     if ! ssh $host true >/dev/null; then
       problem-report "Unable to access $host"
       problem-report "Verify that $host is up and providing ssh service"
@@ -204,6 +204,23 @@ if [[ $labnum =~ "1" ]]; then
     fi
     ((labmaxscore++))
   done
+  host=pfsense
+  if ! ssh admin@$host true >/dev/null; then
+    problem-report "Unable to access $host"
+    problem-report "Verify that $host is up and providing ssh service"
+  else
+    verbose-report "$host is accessible using ssh"
+    ((labscore++))
+  fi
+  ((labmaxscore++))
+  if ! ssh admin@$host -- ping -c 1 google.com >/dev/null; then
+    problem-report "Unable to ping google.com from $host"
+    problem-report "Verify that $host is up and can talk to the internet"
+  else
+    verbose-report "$host can ping google.com"
+    ((labscore++))
+  fi
+  ((labmaxscore++))
   
   scores-report "Lab 01 score is $labscore out of $labmaxscore"
   score=$((score + labscore))
