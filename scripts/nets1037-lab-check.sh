@@ -284,7 +284,8 @@ if [[ $labnum =~ "2" ]]; then
       ;;
 # loghost checks the db and logfiles for received logs and firewall rule
     loghost )
-      mysqlrecordcount="$(mysql -u root  <<< 'select count(*) from Syslog.SystemEvents;')"
+      package_checks mailutils mysql-server rsyslog-mysql
+      which mysql >/dev/null && mysqlrecordcount="$(mysql -u root  <<< 'select count(*) from Syslog.SystemEvents;')"
       if [ "$mysqlrecordcount" ] && [ "$mysqlrecordcount" -gt 0 ]; then
         verbose-report "loghost mysql db has SystemEvents records"
         ((labscore+=10))
@@ -307,7 +308,7 @@ if [[ $labnum =~ "2" ]]; then
       fi
       ((labmaxscore+=5))
       hostsinsyslog="$(awk '{print $2}' /var/log/syslog|sort|uniq -c)"
-      hostsindb="$(mysql -u root <<< 'select distinct FromHost, count(*) from Syslog.SystemEvents group by FromHost;')"
+      which mysql >/dev/null && hostsindb="$(mysql -u root <<< 'select distinct FromHost, count(*) from Syslog.SystemEvents group by FromHost;')"
       for host in loghost mailhost webhost proxyhost nmshost; do
         if "$(grep -aicwq $host /var/log/syslog)"; then 
           verbose-report "loghost: $host found in /var/log/syslog"
@@ -316,7 +317,7 @@ if [[ $labnum =~ "2" ]]; then
           problem-report "loghost: $host not found in /var/log/syslog"
         fi
         ((labmaxscore+=5))
-        if [ "$(mysql -u root <<< 'select count(*) from Syslog.SystemEvents where FromHost like $host%;')" -gt 0 ]; then
+        if which mysql >/dev/null && [ "$(mysql -u root <<< 'select count(*) from Syslog.SystemEvents where FromHost like $host%;')" -gt 0 ]; then
           verbose-report "loghost: $host has records in the SystemEvents table"
           ((labscore+=5))
         else
