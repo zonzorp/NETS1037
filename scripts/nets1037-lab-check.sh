@@ -23,7 +23,11 @@ case `date +%m` in
 esac
 skipUpdate="no"
 ufwAlwaysOn="yes"
+
 . /etc/os-release
+githubrepo=https://github.com/zonzorp/NETS1037
+githubrepoURLprefix="$githubrepo"/raw/main
+scriptdir="$(dirname $0)"
 scriptname="$(basename $0)"
 
 if [ "`hostname`" != "nmshost" ]; then
@@ -32,22 +36,18 @@ if [ "`hostname`" != "nmshost" ]; then
   exit 2
 fi
 
-# add in functions that are helpful
-githubrepo=https://github.com/zonzorp/NETS1037
-githubrepoURLprefix="$githubrepo"/raw/main
-scriptdir="$(dirname $0)"
+# retrieve function libraries from github and source them
 for script in nets1037-funcs.sh nets1037-grading-funcs.sh; do
-  if [ ! -f "$scriptdir"/nets1037-funcs.sh ]; then
-    echo "Retrieving script library file"
-    if ! wget -q -O "$scriptdir"/nets1037-funcs.sh "$githubrepoURLprefix"/scripts/nets1037-funcs.sh; then
-       echo "You need nets1037-funcs.sh from the course github repo in order to use this script."
+  if [ ! -f "$scriptdir"/$script ]; then
+    echo "Retrieving $script from github"
+    if ! wget -q -O "$scriptdir"/$script "$githubrepoURLprefix"/scripts/$script; then
+       echo "You need $script from the course github repo in order to use this script."
        echo "Automatic retrieval of the file has failed. Are you online?"
        exit 1
     fi
   fi
+  source "$scriptdir/$script"
 done
-source "$scriptdir"/nets1037-funcs.sh
-source "$scriptdir"/nets1037-grading-funcs.sh
 
 # curl needed, install if necessary
 curl-check || exit 1
