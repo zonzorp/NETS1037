@@ -81,17 +81,16 @@ while [ $# -gt 0 ]; do
       labnum="$2"
       shift
       ;;
-    -s )
+    -s | --skipupdate)
       skipUpdate="yes" # this hidden options skips checking for script updates
       ;;
-    -f )
+    -f | --skipufwtests)
       ufwAlwaysOn="no" # this hidden option allows not checking ufw rules for all services
       ;;
-    -v )
+    -v | --verbose )
       verbose="yes"
-      verboseoption="--verbose"
       ;;
-    --scoreonly )
+    -o | --scoreonly )
       skipUpdate="yes"
       scoreonly="yes"
       ;;
@@ -279,7 +278,7 @@ if [[ $labnum =~ "2" ]]; then
       # run check on loghost remotely
       
       scp "$scriptdir/$scriptname" loghost:
-      ssh loghost -- "$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 "$verboseoption"
+      [ "$verbose" = "yes" ] && ssh loghost -- "$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 -v
       ssh loghost -- "$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 --scoreonly | read loghostlabscore loghostlabmaxscore
       ;;
 # loghost checks the db and logfiles for received logs and firewall rule
