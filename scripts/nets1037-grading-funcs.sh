@@ -8,24 +8,36 @@ function usage {
 }
 
 function problem-report {
-	if [ "$scoreonly" = "no" ]; then tee -a $logfile <<< ">>> Problem found: $1"; fi
+  if [ "$scoreonly" = "no" ]; then
+    tee -a $logfile <<< ">>> Problem found: $1"
+  else
+    echo >> $logfile <<< ">>> Problem found: $1"
+  fi
 }
 
 function verbose-report {
-	if [ "$scoreonly" = "no" ]; then if [ "$verbose" = "yes" ]; then echo "$1"; fi; fi
-	if [ "$scoreonly" = "no" ]; then echo "$1" >> $logfile; fi
+  if [ "$scoreonly" = "no" ]; then
+    tee -a $logfile <<< "$1"
+  else
+    echo >> $logfile <<< "$1"
+  fi
 }
 
 function scores-report {
-	if [ "$scoreonly" = "no" ]; then tee -a $logfile <<< "$1"; fi
+  if [ "$scoreonly" = "no" ]; then
+    tee -a $logfile <<< "$1"
+  else
+    echo >> $logfile <<< "$1"
+  fi
 }
 
 # function to print out header for output report section
 # Usage: lab_header lab-name
 function lab_header {
-	if [ "$scoreonly" = "no" ]; then echo ""; fi
-	if [ "$scoreonly" = "no" ]; then echo "Checking for Lab $1 tasks"; fi
-	if [ "$scoreonly" = "no" ]; then echo "--------------------------"; fi
+	[ "$scoreonly" = "yes" ] && return
+	echo ""
+	echo "Checking for Lab $1 tasks"
+	echo "--------------------------"
 }
 
 # function to check if packages are installed
