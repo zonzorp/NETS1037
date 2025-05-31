@@ -73,3 +73,64 @@ function package_checks {
 	done
 	return $final_status
 }
+
+function check_config_file {
+	configfile="$1"
+	directive="$2"
+	value="$3"
+	grep -q "$directive[ 	][ 	]*$value" $configfile
+	if [ $? != "0" ]; then
+		problem-report "$directive should be $value in $configfile"
+	else
+		verbose-report "$directive in $configfile ok"
+		((labscore+=1))
+	fi
+	((labmaxscore+=1))
+}
+
+function check_config_file_allow_extra_stuff {
+	configfile="$1"
+	directive="$2"
+	value="$3"
+	grep -q "$directive[ 	].*$value.*" $configfile
+	if [ $? != "0" ]; then
+		problem-report "$directive should be $value in $configfile"
+	else
+		verbose-report "$directive in $configfile probably ok"
+		((labscore+=1))
+	fi
+	((labmaxscore+=1))
+}
+
+function check_interface_config {
+	ifacename="$1"
+	ifaceaddr="$2"
+	if [[ "${addrs[$ifacename]}" =~ "$ifaceaddr" ]]; then
+		verbose-report "$ifacename/$ifaceaddr configured ok"
+		((labscore+=3))
+	else
+		problem-report "$ifacename should be configured for address $ifaceaddr"
+		if [[ "$VERSION_ID" < "18.04" ]]; then
+			problem-report "Check your interfaces files"
+		else
+			problem-report "Check your netplan files"
+		fi
+	fi
+	((labmaxscore+=3))
+}
+
+function check_ufw {
+	service="$1"
+	port="$2"
+	if [ "$ufwAlwaysOn" = "yes" ]; then
+		ufw status verbose |& grep "^$port " >/dev/null
+		if [ $? != "0" ]; then
+			problem-report "Firewall rule for $service missing"
+			problem-report "Review the instructions for setting up a $service allow rule for ufw"
+		else
+			verbose-report "Firewall config for $service ok"
+			((labscore+=2))
+		fi
+		((labmaxscore+=2))
+	fi
+}
