@@ -1,27 +1,3 @@
-#############
-# defaults
-#############
-
-labnum="123456789"
-firstname="$FIRSTNAME"
-lastname="$LASTNAME"
-studentnumber="$STUDENTNUMBER"
-score=0
-labscore=0
-labmaxscore=0
-maxscore=0
-labscoresURL="https://zonzorp.net/gc/postlabscores.php"
-datetime=$(date +"%Y-%m-%d@%H:%M:%S%p")
-logfile="/tmp/sc$datetime$$.log"
-course="COMP1071"
-case `date +%m` in
-01|02|03|04) semester="W`date +%y`";;
-05|06|07|08) semester="S`date +%y`";;
-09|10|11|12) semester="F`date +%y`";;
-esac
-skipUpdate="no"
-ufwAlwaysOn="yes"
-. /etc/os-release
 
 ############
 # Functions
