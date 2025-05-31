@@ -32,6 +32,14 @@ githubrepoURLprefix="$githubrepo"/raw/main
 scriptdir="$(dirname $0)"
 scriptname="$(basename $0)"
 
+if [ "$(ip r s default |awk '{print $5}')" = "eth0" ]; then
+  router=openwrt
+  mgmt="-mgmt"
+else
+  router=pfsense
+  mgmt=
+fi
+
 while [ $# -gt 0 ]; do
   case "$1" in
     -l | --lab)
@@ -190,33 +198,34 @@ if [[ $labnum =~ "1" ]]; then
   labscore=0
   labmaxscore=0
   # router first
-  host=pfsense
-  if ! ping -c 1 $host >/dev/null; then
-    problem-report "Unable to ping $host"
-    problem-report "Verify that $host is up and can talk to the private network"
+  sshhost=$router$mgmt
+  if ! ping -c 1 $router >/dev/null; then
+    problem-report "Unable to ping $router"
+    problem-report "Verify that $router is up and can talk to the private network"
   else
-    verbose-report "$host responds to ping"
+    verbose-report "$router responds to ping"
     ((labscore+=3))
   fi
   ((labmaxscore+=3))
-  if ! ssh admin@$host true >/dev/null; then
-    problem-report "Unable to access $host"
-    problem-report "Verify that $host is up and providing ssh service"
+  if ! ssh admin@$sshhost true >/dev/null; then
+    problem-report "Unable to access $sshhost"
+    problem-report "Verify that $sshhost is up and providing ssh service"
   else
-    verbose-report "$host is accessible using ssh"
+    verbose-report "$sshhost is accessible using ssh"
     ((labscore+=4))
   fi
   ((labmaxscore+=4))
-  if ! ssh admin@$host -- ping -c 1 google.com >/dev/null; then
-    problem-report "Unable to ping google.com from $host"
-    problem-report "Verify that $host is up and can talk to the internet"
+  if ! ssh admin@$sshhost -- ping -c 1 google.com >/dev/null; then
+    problem-report "Unable to ping google.com from $sshhost"
+    problem-report "Verify that $sshhost is up and can talk to the internet"
   else
-    verbose-report "$host can ping google.com"
+    verbose-report "$sshhost can ping google.com"
     ((labscore+=3))
   fi
   ((labmaxscore+=3))
   # then the other machines
   for host in loghost mailhost webhost proxyhost nmshost; do
+    sshhost="$host$mgmt"
     if ! ping -c 1 $host >/dev/null; then
       problem-report "Unable to ping $host"
       problem-report "Verify that $host is up and can talk to the private network"
@@ -225,19 +234,19 @@ if [[ $labnum =~ "1" ]]; then
       ((labscore+=5))
     fi
     ((labmaxscore+=5))
-    if ! ssh $host true >/dev/null; then
-      problem-report "Unable to access $host"
-      problem-report "Verify that $host is up and providing ssh service"
+    if ! ssh $sshhost true >/dev/null; then
+      problem-report "Unable to access $sshhost"
+      problem-report "Verify that $sshhost is up and providing ssh service"
     else
-      verbose-report "$host is accessible using ssh"
+      verbose-report "$sshhost is accessible using ssh"
       ((labscore+=8))
     fi
     ((labmaxscore+=8))
-    if ! ssh $host -- ping -c 1 google.com >/dev/null; then
-      problem-report "Unable to ping google.com from $host"
-      problem-report "Verify that $host is up and can talk to the internet"
+    if ! ssh $sshhost -- ping -c 1 google.com >/dev/null; then
+      problem-report "Unable to ping google.com from $sshhost"
+      problem-report "Verify that $sshhost is up and can talk to the internet"
     else
-      verbose-report "$host can ping google.com"
+      verbose-report "$sshhost can ping google.com"
       ((labscore+=5))
     fi
     ((labmaxscore+=5))
@@ -271,10 +280,11 @@ if [[ $labnum =~ "2" ]]; then
         verbose-report "loghost is accessible using ssh"
       fi
       # run check on loghost remotely
-      
-      scp -q "$scriptdir/$scriptname" "$scriptdir/nets1037-funcs.sh" "$scriptdir/nets1037-grading-funcs.sh" root@loghost:/root
-      [ "$verbose" = "yes" ] && ssh root@loghost -- /root/"$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 -v -s
-      read label loghostlabscore loghostlabmaxscore <<< "$(ssh root@loghost -- /root/$scriptname $firstname $lastname $studentnumber -l 2 -s -o)"
+
+      sshhost="loghost$mgmt"
+      scp -q "$scriptdir/$scriptname" "$scriptdir/nets1037-funcs.sh" "$scriptdir/nets1037-grading-funcs.sh" root@$sshhhost:/root
+      [ "$verbose" = "yes" ] && ssh root@$sshhost -- /root/"$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 -v -s
+      read label loghostlabscore loghostlabmaxscore <<< "$(ssh root@$sshhost -- /root/$scriptname $firstname $lastname $studentnumber -l 2 -s -o)"
       if [ "$label" != "Scores:" ]; then
         problem-report "Remote run of lab checks on loghost failed to produce correct output: '$label $loghostlabscore $loghostlabmaxscore'"
       else
