@@ -273,8 +273,8 @@ if [[ $labnum =~ "2" ]]; then
       # run check on loghost remotely
       
       scp -q "$scriptdir/$scriptname" root@loghost:/root
-      [ "$verbose" = "yes" ] && ssh root@loghost -- /root/"$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 -v
-      ssh root@loghost -- /root/"$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 --scoreonly | read label loghostlabscore loghostlabmaxscore
+      [ "$verbose" = "yes" ] && ssh root@loghost -- /root/"$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 -v -s
+      ssh root@loghost -- /root/"$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 -s -o | read label loghostlabscore loghostlabmaxscore
       if [ "$label" != "Scores:" ]; then
       	problem-report "Remote run of lab checks on loghost failed to produce correct output: '$label $loghostlabscore $loghostlabmaxscore'"
        else
