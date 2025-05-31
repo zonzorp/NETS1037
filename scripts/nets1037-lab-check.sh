@@ -124,14 +124,14 @@ if [ "$skipUpdate" = "no" ]; then
   done
 fi
 
-cat <<EOF
-This script will check various parts of your server to see if you have completed
-the setup of the various services and configuration as instructed during the semester.
-***********************!!!!!!!!!!*********************
-It is expected that you use lower case only whenever you use your name as part of
-your server configuration, for username, domain name, etc.
-***********************!!!!!!!!!!*********************
-EOF
+#cat <<EOF
+#This script will check various parts of your server to see if you have completed
+#the setup of the various services and configuration as instructed during the semester.
+#***********************!!!!!!!!!!*********************
+#It is expected that you use lower case only whenever you use your name as part of
+#your server configuration, for username, domain name, etc.
+#***********************!!!!!!!!!!*********************
+#EOF
 
 while [ "$firstname" = "" ]; do
 	read -p "Your first name? " firstname
