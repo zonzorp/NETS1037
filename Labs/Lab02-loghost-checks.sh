@@ -27,7 +27,7 @@ if sudo ss -tulpn |grep -q 'udp.*0.0.0.0:514.*0.0.0.0:.*syslogd' ; then
 else
   echo "rsyslog is not listening to 514/udp for syslog on the network"
 fi
-if sudo ufw status|grep ''; then
+if sudo ufw status|grep '514/udp.*ALLOW'; then
 	echo "ufw allows 514/udp"
   ((score+=2))
 else
