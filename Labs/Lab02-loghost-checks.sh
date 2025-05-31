@@ -15,7 +15,7 @@ $(date)
 score=0
 
 mysqlrecordcount="$(sudo mysql -u root  <<< 'select count(*) from Syslog.SystemEvents;')"
-if [ "$mysqlrecordcount" -gt 0 ]; then
+if [ "$mysqlrecordcount" ] && [ "$mysqlrecordcount" -gt 0 ]; then
   echo "mysql db has SystemEvents records"
   ((score+=3))
 else
