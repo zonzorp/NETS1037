@@ -272,7 +272,7 @@ if [[ $labnum =~ "2" ]]; then
       fi
       # run check on loghost remotely
       
-      scp -q "$scriptdir/$scriptname" root@loghost:/root
+      scp -q "$scriptdir/$scriptname" "$scriptdir/nets1037-funcs.sh" "$scriptdir/nets1037-grading-funcs.sh" root@loghost:/root
       [ "$verbose" = "yes" ] && ssh root@loghost -- /root/"$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 -v -s
       ssh root@loghost -- /root/"$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 -s -o |
         while read label loghostlabscore loghostlabmaxscore; do
