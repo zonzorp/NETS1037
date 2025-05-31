@@ -16,7 +16,7 @@ function problem-report {
 }
 
 function verbose-report {
-  if [ "$scoreonly" = "no" ]; then
+  if [ "$verbose" = "yes" ]; then
     tee -a $logfile <<< "$1"
   else
     echo >> $logfile <<< "$1"
