@@ -180,50 +180,58 @@ if [[ $labnum =~ "1" ]]; then
   lab_header "01"
   labscore=0
   labmaxscore=0
-  #package_checks "curl"
-  if ! ping -c 1 pfsense >/dev/null; then
-    problem-report "Unable to ping pfsense"
-    problem-report "Verify that pfsense is up and can talk to the private network"
-  else
-    verbose-report "pfsense responds to ping"
-    ((labscore++))
-  fi
-  ((labmaxscore++))
+  # router first
   host=pfsense
+  if ! ping -c 1 $host >/dev/null; then
+    problem-report "Unable to ping $host"
+    problem-report "Verify that $host is up and can talk to the private network"
+  else
+    verbose-report "$host responds to ping"
+    ((labscore+=3))
+  fi
+  ((labmaxscore+=3))
   if ! ssh admin@$host true >/dev/null; then
     problem-report "Unable to access $host"
     problem-report "Verify that $host is up and providing ssh service"
   else
     verbose-report "$host is accessible using ssh"
-    ((labscore++))
+    ((labscore+=4))
   fi
-  ((labmaxscore++))
+  ((labmaxscore+=4))
   if ! ssh admin@$host -- ping -c 1 google.com >/dev/null; then
     problem-report "Unable to ping google.com from $host"
     problem-report "Verify that $host is up and can talk to the internet"
   else
     verbose-report "$host can ping google.com"
-    ((labscore++))
+    ((labscore+=3))
   fi
-  ((labmaxscore++))
-  
+  ((labmaxscore+=3))
+  # then the other machines
   for host in loghost mailhost webhost proxyhost nmshost; do
+    if ! ping -c 1 $host >/dev/null; then
+      problem-report "Unable to ping $host"
+      problem-report "Verify that $host is up and can talk to the private network"
+    else
+      verbose-report "$host responds to ping"
+      ((labscore+=5))
+    fi
+    ((labmaxscore+=5))
     if ! ssh $host true >/dev/null; then
       problem-report "Unable to access $host"
       problem-report "Verify that $host is up and providing ssh service"
     else
       verbose-report "$host is accessible using ssh"
-      ((labscore++))
+      ((labscore+=8))
     fi
-    ((labmaxscore++))
+    ((labmaxscore+=8))
     if ! ssh $host -- ping -c 1 google.com >/dev/null; then
       problem-report "Unable to ping google.com from $host"
       problem-report "Verify that $host is up and can talk to the internet"
     else
       verbose-report "$host can ping google.com"
-      ((labscore++))
+      ((labscore+=5))
     fi
-    ((labmaxscore++))
+    ((labmaxscore+=5))
   done
   
   scores-report "Lab 01 score is $labscore out of $labmaxscore"
