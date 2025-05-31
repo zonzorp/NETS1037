@@ -50,10 +50,10 @@ for host in loghost mailhost webhost proxyhost nmshost; do
         echo "$host not found in the SystemEvents table"
   fi
 done
+echo "Score: $score"
 
 exit
 
-echo "Score: $score"
 echo Host config checks
 echo ===================
 echo $(hostname) has IP $(hostname -I)
