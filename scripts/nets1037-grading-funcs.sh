@@ -113,7 +113,7 @@ function check_ufw {
 
 function curl-check {
   if ! which curl; then
-    if ! sudo apt-get update; then
+    if ! sudo apt-get -qq update; then
       problem-report "Unable to run apt-get update successfuly, are we online?"
       return 1
     fi
