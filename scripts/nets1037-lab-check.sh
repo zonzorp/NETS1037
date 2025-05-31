@@ -325,7 +325,7 @@ if [[ $labnum =~ "2" ]]; then
         fi
         ((labmaxscore+=5))
       done
-      echo "Scores: $labscore $labmaxscore"
+      [ "$scoreonly" = "yes" ] && echo "Scores: $labscore $labmaxscore"
       exit
       ;;
   esac
