@@ -287,10 +287,10 @@ if [[ $labnum =~ "2" ]]; then
       package_checks mailutils mysql-server rsyslog-mysql
       which mysql >/dev/null && mysqlrecordcount="$(mysql -u root  <<< 'select count(*) from Syslog.SystemEvents;')"
       if [ "$mysqlrecordcount" ] && [ "$mysqlrecordcount" -gt 0 ]; then
-        verbose-report "loghost mysql db has SystemEvents records"
+        verbose-report "loghost mysql log database has logs in it"
         ((labscore+=10))
       else
-        problem-report "loghost SystemEvents table is empty"
+        problem-report "loghost mysql log database is empty"
       fi
       ((labmaxscore+=10))
       if ss -tulpn |grep -q 'udp.*0.0.0.0:514.*0.0.0.0:.*syslogd' ; then
@@ -307,21 +307,21 @@ if [[ $labnum =~ "2" ]]; then
         problem-report "loghost UFW is not allowing syslog traffic on 514/udp"
       fi
       ((labmaxscore+=5))
-      hostsinsyslog="$(awk '{print $2}' /var/log/syslog|sort|uniq -c)"
-      which mysql >/dev/null && hostsindb="$(mysql -u root <<< 'select distinct FromHost, count(*) from Syslog.SystemEvents group by FromHost;')"
+      # hostsinsyslog="$(awk '{print $2}' /var/log/syslog|sort|uniq -c)"
+      # which mysql >/dev/null && hostsindb="$(mysql -u root <<< 'select distinct FromHost, count(*) from Syslog.SystemEvents group by FromHost;')"
       for host in loghost mailhost webhost proxyhost nmshost; do
-        if "$(grep -aicwq $host /var/log/syslog)"; then 
-          verbose-report "loghost: $host found in /var/log/syslog"
+        if "$(awk '{print $2}' /var/log/syslog|grep -iq $host)"; then 
+          verbose-report "loghost: logs from $host found in /var/log/syslog"
           ((labscore+=5))
         else
-          problem-report "loghost: $host not found in /var/log/syslog"
+          problem-report "loghost: logs from $host not found in /var/log/syslog"
         fi
         ((labmaxscore+=5))
         if which mysql >/dev/null && [ "$(mysql -u root <<< 'select count(*) from Syslog.SystemEvents where FromHost like $host%;')" -gt 0 ]; then
-          verbose-report "loghost: $host has records in the SystemEvents table"
+          verbose-report "loghost: logs from $host found in the mysql database"
           ((labscore+=5))
         else
-          problem-report "loghost: $host not found in the SystemEvents table"
+          problem-report "loghost: logs from $host not found in the mysql database"
         fi
         ((labmaxscore+=5))
       done
