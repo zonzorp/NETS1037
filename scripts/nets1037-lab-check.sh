@@ -23,6 +23,7 @@ case `date +%m` in
 esac
 skipUpdate="no"
 ufwAlwaysOn="yes"
+scoreonly="no"
 
 . /etc/os-release
 githubrepo=https://github.com/zonzorp/NETS1037
@@ -30,11 +31,11 @@ githubrepoURLprefix="$githubrepo"/raw/main
 scriptdir="$(dirname $0)"
 scriptname="$(basename $0)"
 
-if [ "`hostname`" != "nmshost" ]; then
-  echo "Hostname is `hostname`, but this script is only valid on nmshost"
-  echo "You need to log into nmshost to use this script"
-  exit 2
-fi
+#if [ "`hostname`" != "nmshost" ]; then
+#  echo "Hostname is `hostname`, but this script is only valid on nmshost"
+#  echo "You need to log into nmshost to use this script"
+#  exit 2
+#fi
 
 # retrieve function libraries from github and source them
 for script in nets1037-funcs.sh nets1037-grading-funcs.sh; do
@@ -75,35 +76,40 @@ fi
 
 verbose="no"
 while [ $# -gt 0 ]; do
-	case "$1" in
-		-l | --lab)
-			labnum="$2"
-			shift
-			;;
-		-s )
-			skipUpdate="yes" # this hidden options skips checking for script updates
-			;;
-		-f )
-			ufwAlwaysOn="no" # this hidden option allows not checking ufw rules for all services
-			;;
-		-v )
-			verbose="yes"
-			;;
-		*)
-			if [ "$firstname" = "" ]; then
-				firstname="$1"
-			elif [ "$lastname" = "" ]; then
-				lastname="$1"
-			elif [ "$studentnumber" = "" ]; then
-				studentnumber="$1"
-			else
-				usage
-				rm $logfile # this logfile is pointless, discard it
-				exit
-			fi
-			;;
-	esac
-	shift
+  case "$1" in
+    -l | --lab)
+      labnum="$2"
+      shift
+      ;;
+    -s )
+      skipUpdate="yes" # this hidden options skips checking for script updates
+      ;;
+    -f )
+      ufwAlwaysOn="no" # this hidden option allows not checking ufw rules for all services
+      ;;
+    -v )
+      verbose="yes"
+      verboseoption="--verbose"
+      ;;
+    --scoreonly )
+      skipUpdate="yes"
+      scoreonly="yes"
+      ;;
+    *)
+      if [ "$firstname" = "" ]; then
+        firstname="$1"
+      elif [ "$lastname" = "" ]; then
+        lastname="$1"
+      elif [ "$studentnumber" = "" ]; then
+        studentnumber="$1"
+      else
+        usage
+        rm $logfile # this logfile is pointless, discard it
+        exit
+      fi
+      ;;
+  esac
+  shift
 done
 
 if [ "$skipUpdate" = "no" ]; then
@@ -181,6 +187,12 @@ verbose-report "Host name: $hostname"
 
 if [[ $labnum =~ "1" ]]; then
   lab_header "01"
+  if [ "`hostname`" != "nmshost" ]; then
+    echo "Hostname is `hostname`, but this script is only valid on nmshost"
+    echo "You need to log into nmshost to use this script"
+    exit 2
+  fi
+
   labscore=0
   labmaxscore=0
   # router first
@@ -241,65 +253,85 @@ if [[ $labnum =~ "1" ]]; then
   score=$((score + labscore))
   maxscore=$((maxscore + labmaxscore))
   scores-report "   Running score is $score out of $maxscore"
-  scorespostdata="course=$course&semester=$semester&studentnumber=$studentnumber&firstname=$firstname&lastname=$lastname&lab=1&score=$labscore&maxscore=$labmaxscore"
-  curl -s -A "Mozilla/4.0" -d "$scorespostdata" $labscoresURL || problem-report "Unable to post scores to website"
+#  scorespostdata="course=$course&semester=$semester&studentnumber=$studentnumber&firstname=$firstname&lastname=$lastname&lab=1&score=$labscore&maxscore=$labmaxscore"
+#  curl -s -A "Mozilla/4.0" -d "$scorespostdata" $labscoresURL || problem-report "Unable to post scores to website"
 fi
 
-if [[ $labnum =~ "1" ]]; then
-  lab_header "01"
+if [[ $labnum =~ "2" ]]; then
+  lab_header "02"
   labscore=0
   labmaxscore=0
-  # router first
-  host=loghost
-  if ! ping -c 1 $host >/dev/null; then
-    problem-report "Unable to ping $host"
-    problem-report "Verify that $host is up and can talk to the private network"
-  else
-    verbose-report "$host responds to ping"
-  fi
+  case "$(hostname)" in
+    # ensure we can reach loghost and then run the labcheck on it
+    nmshost )
+      if ! ping -c 1 $host >/dev/null; then
+        problem-report "Unable to ping $host"
+        problem-report "Verify that $host is up and can talk to the private network"
+      else
+        verbose-report "$host responds to ping"
+      fi
+      if ! ssh admin@$host true >/dev/null; then
+        problem-report "Unable to access $host"
+        problem-report "Verify that $host is up and providing ssh service"
+      else
+        verbose-report "$host is accessible using ssh"
+      fi
+      # run check on loghost remotely
+      
+      scp "$scriptdir/$scriptname" loghost:
+      ssh loghost -- "$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 "$verboseoption" --scoreonly
+      ssh loghost -- "$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 --scoreonly | read loghostlabscore loghostlabmaxscore
+      ;;
+# loghost checks the db and logfiles for received logs and firewall rule
+    loghost )
+      mysqlrecordcount="$(sudo mysql -u root  <<< 'select count(*) from Syslog.SystemEvents;')"
+      if [ "$mysqlrecordcount" ] && [ "$mysqlrecordcount" -gt 0 ]; then
+        verbose-report "loghost mysql db has SystemEvents records"
+        ((labscore+=10))
+      else
+        problem-report "loghost SystemEvents table is empty"
+      fi
+      ((labmaxscore+=10))
+      if sudo ss -tulpn |grep -q 'udp.*0.0.0.0:514.*0.0.0.0:.*syslogd' ; then
+        verbose-report "loghost rsyslog is listening to the network on 514/udp"
+        ((labscore+=10))
+      else
+        problem-report "loghost rsyslog is not listening to 514/udp for syslog on the network"
+      fi
+      ((labmaxscore+=10))
+      if sudo ufw status 2>&1 |grep '514/udp.*ALLOW'; then
+        verbose-report "loghost ufw allows 514/udp"
+        ((labscore+=5))
+      else
+        problem-report "loghost UFW is not allowing syslog traffic on 514/udp"
+      fi
+      ((labmaxscore+=5))
+      hostsinsyslog="$(sudo awk '{print $2}' /var/log/syslog|sort|uniq -c)"
+      hostsindb="$(sudo mysql -u root <<< 'select distinct FromHost, count(*) from Syslog.SystemEvents group by FromHost;')"
+      for host in loghost mailhost webhost proxyhost nmshost; do
+        if "$(sudo grep -aicwq $host /var/log/syslog)"; then 
+          verbose-report "loghost: $host found in /var/log/syslog"
+          ((labscore+=5))
+        else
+          problem-report "loghost: $host not found in /var/log/syslog"
+        fi
+        ((labmaxscore+=5))
+        if [ "$(sudo mysql -u root <<< 'select distinct count(*) from Syslog.SystemEvents where FromHost like $host%;')" -gt 0 ]; then
+          verbose-report "loghost: $host has records in the SystemEvents table"
+          ((labscore+=5))
+        else
+          problem-report "loghost: $host not found in the SystemEvents table"
+        fi
+        ((labmaxscore+=5))
+      done
+      ;;
+  esac
 
-mysqlrecordcount="$(sudo mysql -u root  <<< 'select count(*) from Syslog.SystemEvents;')"
-if [ "$mysqlrecordcount" ] && [ "$mysqlrecordcount" -gt 0 ]; then
-  echo "mysql db has SystemEvents records"
-  ((score+=3))
-else
-    echo "SystemEvents table is empty"
-fi
-if sudo ss -tulpn |grep -q 'udp.*0.0.0.0:514.*0.0.0.0:.*syslogd' ; then
-  echo "rsyslog is listening to the network on 514/udp"
-  ((score+=3))
-else
-  echo "rsyslog is not listening to 514/udp for syslog on the network"
-fi
-if sudo ufw status 2>&1 |grep '514/udp.*ALLOW'; then
-	echo "ufw allows 514/udp"
-  ((score+=2))
-else
-  echo "UFW is not allowing syslog traffic on 514/udp"
-fi
-
-hostsinsyslog="$(sudo awk '{print $2}' /var/log/syslog|sort|uniq -c)"
-hostsindb="$(sudo mysql -u root <<< 'select distinct FromHost, count(*) from Syslog.SystemEvents group by FromHost;')"
-for host in loghost mailhost webhost proxyhost nmshost; do
-  if "$(sudo grep -aicwq $host /var/log/syslog)"; then 
-    echo "$host found in /var/log/syslog"
-    ((score++))
-  else
-    echo "$host not found in /var/log/syslog"
-  fi
-  if [ "$(sudo mysql -u root <<< 'select distinct count(*) from Syslog.SystemEvents where FromHost like $host%;')" -gt 0 ]; then
-    echo "$host has records in the SystemEvents table"
-    ((score+=3))
-  else
-        echo "$host not found in the SystemEvents table"
-  fi
-done
-
-  scores-report "Lab 01 score is $labscore out of $labmaxscore"
-  score=$((score + labscore))
-  maxscore=$((maxscore + labmaxscore))
+  scores-report "Lab 02 score from loghost is $labscore out of $labmaxscore"
+  score=$((score + loghostlabscore))
+  maxscore=$((maxscore + loghostlabmaxscore))
   scores-report "   Running score is $score out of $maxscore"
-  scorespostdata="course=$course&semester=$semester&studentnumber=$studentnumber&firstname=$firstname&lastname=$lastname&lab=1&score=$labscore&maxscore=$labmaxscore"
-  curl -s -A "Mozilla/4.0" -d "$scorespostdata" $labscoresURL || problem-report "Unable to post scores to website"
+#  scorespostdata="course=$course&semester=$semester&studentnumber=$studentnumber&firstname=$firstname&lastname=$lastname&lab=1&score=$labscore&maxscore=$labmaxscore"
+#  curl -s -A "Mozilla/4.0" -d "$scorespostdata" $labscoresURL || problem-report "Unable to post scores to website"
 fi
 
