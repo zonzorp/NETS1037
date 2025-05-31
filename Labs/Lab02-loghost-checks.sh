@@ -27,7 +27,7 @@ if sudo ss -tulpn |grep -q 'udp.*0.0.0.0:514.*0.0.0.0:.*syslogd' ; then
 else
   echo "rsyslog is not listening to 514/udp for syslog on the network"
 fi
-if sudo ufw status|grep '514/udp.*ALLOW'; then
+if sudo ufw status 2>&1 |grep '514/udp.*ALLOW'; then
 	echo "ufw allows 514/udp"
   ((score+=2))
 else
@@ -37,7 +37,7 @@ fi
 hostsinsyslog="$(sudo awk '{print $2}' /var/log/syslog|sort|uniq -c)"
 hostsindb="$(sudo mysql -u root <<< 'select distinct FromHost, count(*) from Syslog.SystemEvents group by FromHost;')"
 for host in loghost mailhost webhost proxyhost nmshost; do
-  if echo "$(sudo grep -aicw $host /var/log/syslog)"; then 
+  if "$(sudo grep -aicwq $host /var/log/syslog)"; then 
     echo "$host found in /var/log/syslog"
     ((score++))
   else
