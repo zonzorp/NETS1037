@@ -8,11 +8,11 @@ function usage {
 }
 
 function problem-report {
-  if [ "$scoreonly" = "no" ]; then
-    tee -a $logfile <<< ">>> Problem found: $1"
-  else
-    echo >> $logfile <<< ">>> Problem found: $1"
-  fi
+#  if [ "$scoreonly" = "no" ]; then
+    1>&2 tee -a $logfile <<< ">>> Problem found: $1"
+#  else
+#    echo >> $logfile <<< ">>> Problem found: $1"
+#  fi
 }
 
 function verbose-report {
