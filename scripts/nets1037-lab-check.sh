@@ -174,7 +174,7 @@ verbose-report "Course/Semester: $course/$semester"
 verbose-report "First name: $firstname"
 verbose-report "Last name : $lastname"
 verbose-report "Student Number: $studentnumber"
-verbose-report "Host name: $hostname"
+verbose-report "Host type: $hosttype"
 
 
 # per lab checks now
