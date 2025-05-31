@@ -19,7 +19,7 @@ if [ "$mysqlrecordcount" -gt 0 ]; then
   echo "mysql db has SystemEvents records"
   ((score+=3))
 else
-    echo "***Problem*** SystemEvents table is empty, your rsyslog isn't sending logs to the mysql database"
+    echo "SystemEvents table is empty"
 fi
 if sudo ss -tulpn |grep -q 'udp.*0.0.0.0:514.*0.0.0.0:.*syslogd' ; then
   echo "rsyslog is listening to the network on 514/udp"
