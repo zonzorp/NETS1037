@@ -47,7 +47,7 @@ for script in nets1037-funcs.sh nets1037-grading-funcs.sh; do
   fi
 done
 source "$scriptdir"/nets1037-funcs.sh
-source nets1037-grading-funcs.sh
+source "$scriptdir"/nets1037-grading-funcs.sh
 
 ############
 # Main
