@@ -274,14 +274,16 @@ if [[ $labnum =~ "2" ]]; then
       
       scp -q "$scriptdir/$scriptname" root@loghost:/root
       [ "$verbose" = "yes" ] && ssh root@loghost -- /root/"$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 -v -s
-      ssh root@loghost -- /root/"$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 -s -o | read label loghostlabscore loghostlabmaxscore
-      if [ "$label" != "Scores:" ]; then
-      	problem-report "Remote run of lab checks on loghost failed to produce correct output: '$label $loghostlabscore $loghostlabmaxscore'"
-       else
-         labscore=loghostlabscore
-	 labmaxscore=loghostlabmaxscore
-       fi
-      ;;
+      ssh root@loghost -- /root/"$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 -s -o |
+        while read label loghostlabscore loghostlabmaxscore; do
+          if [ "$label" != "Scores:" ]; then
+      	    problem-report "Remote run of lab checks on loghost failed to produce correct output: '$label $loghostlabscore $loghostlabmaxscore'"
+          else
+            labscore=loghostlabscore
+	    labmaxscore=loghostlabmaxscore
+          fi
+        done
+	;;
 # loghost checks the db and logfiles for received logs and firewall rule
     loghost )
       package_checks mailutils mysql-server rsyslog-mysql
