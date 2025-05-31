@@ -24,10 +24,11 @@ esac
 skipUpdate="no"
 ufwAlwaysOn="yes"
 . /etc/os-release
+scriptname="$(basename $0)"
 
-if [ "`hostname`" != "loghost" ]; then
-  echo "Hostname is `hostname`, but this script is only valid on loghost"
-  echo "You need to log into loghost to use this script"
+if [ "`hostname`" != "nmshost" ]; then
+  echo "Hostname is `hostname`, but this script is only valid on nmshost"
+  echo "You need to log into nmshost to use this script"
   exit 2
 fi
 
@@ -104,14 +105,14 @@ done
 
 if [ "$skipUpdate" = "no" ]; then
   echo "Checking if script is up to date, please wait"
-  for script in loghost-checker.sh nets1037-funcs.sh nets1037-grading-funcs.sh; do
+  for script in $scriptname nets1037-funcs.sh nets1037-grading-funcs.sh; do
     wget -nv -O "$scriptdir"/$script-new "$githubrepoURLprefix"/scripts/$script >& /dev/null
     diff "$scriptdir"/$script "$scriptdir"/$script-new >& /dev/null
     if [ "$?" != "0" -a -s "$scriptdir"/$script-new ]; then
       mv "$scriptdir"/$script-new "$scriptdir"/$script
       chmod +x "$scriptdir"/$script
-      echo ""$scriptdir"/$script updated"
-      "$scriptdir"/$script -s "$@"
+      echo "$scriptdir"/$script updated
+      "$scriptdir"/$scriptname -s "$@"
       rm $logfile # this logfile is pointless, discard it
       exit
     else
