@@ -264,22 +264,22 @@ if [[ $labnum =~ "2" ]]; then
   case "$(hostname)" in
     # ensure we can reach loghost and then run the labcheck on it
     nmshost )
-      if ! ping -c 1 $host >/dev/null; then
-        problem-report "Unable to ping $host"
-        problem-report "Verify that $host is up and can talk to the private network"
+      if ! ping -c 1 loghost >/dev/null; then
+        problem-report "Unable to ping loghost"
+        problem-report "Verify that loghost is up and can talk to the private network"
       else
-        verbose-report "$host responds to ping"
+        verbose-report "loghost responds to ping"
       fi
-      if ! ssh admin@$host true >/dev/null; then
-        problem-report "Unable to access $host"
-        problem-report "Verify that $host is up and providing ssh service"
+      if ! ssh loghost true >/dev/null; then
+        problem-report "Unable to access loghost"
+        problem-report "Verify that loghost is up and providing ssh service"
       else
-        verbose-report "$host is accessible using ssh"
+        verbose-report "loghost is accessible using ssh"
       fi
       # run check on loghost remotely
       
       scp "$scriptdir/$scriptname" loghost:
-      ssh loghost -- "$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 "$verboseoption" --scoreonly
+      ssh loghost -- "$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 "$verboseoption"
       ssh loghost -- "$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 --scoreonly | read loghostlabscore loghostlabmaxscore
       ;;
 # loghost checks the db and logfiles for received logs and firewall rule
