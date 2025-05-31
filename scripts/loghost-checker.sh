@@ -25,6 +25,12 @@ skipUpdate="no"
 ufwAlwaysOn="yes"
 . /etc/os-release
 
+if [ "`hostname`" != "loghost" ]; then
+  echo "Hostname is `hostname`, but this script is only valid on loghost"
+  echo "You need to log into loghost to use this script"
+  exit 2
+fi
+
 # add in functions that are helpful
 githubrepo=https://github.com/zonzorp/NETS1037
 githubrepoURLprefix="$githubrepo"/raw/main
@@ -50,7 +56,7 @@ source nets1037-grading-funcs.sh
 date +"server-check running on %Y-%M-%D at %H:%M %p" >$logfile
 echo "$0 $@" >>$logfile
 
-#Checks if your userID is root
+#Checks if you can use sudo
 sudo-check
 
 # test if internet is reachable
@@ -165,4 +171,44 @@ verbose-report "First name: $firstname"
 verbose-report "Last name : $lastname"
 verbose-report "Student Number: $studentnumber"
 verbose-report "Host name: $hostname"
+
+if [[ $labnum =~ "1" ]]; then
+  lab_header "01"
+  labscore=0
+  labmaxscore=0
+  #package_checks "sl cowsay memstat sysstat curl"
+  if ! ping -c 1 pfsense >/dev/null; then
+    problem-report "Unable to ping pfsense"
+    problem-report "Verify that pfsense is up and can talk to the private network"
+  else
+    verbose-report "pfsense responds to ping"
+    ((labscore++))
+  fi
+  ((labmaxscore++))
+  for host in pfsense loghost mailhost webhost proxyhost nmshost; do
+    if ! ssh $host true >/dev/null; then
+      problem-report "Unable to access $host"
+      problem-report "Verify that $host is up and providing ssh service"
+    else
+      verbose-report "$host is accessible using ssh"
+      ((labscore++))
+    fi
+    ((labmaxscore++))
+    if ! ssh $host -- ping -c 1 google.com >/dev/null; then
+      problem-report "Unable to ping google.com from $host"
+      problem-report "Verify that $host is up and can talk to the internet"
+    else
+      verbose-report "$host can ping google.com"
+      ((labscore++))
+    fi
+    ((labmaxscore++))
+  done
+  
+  scores-report "Lab 01 score is $labscore out of $labmaxscore"
+  score=$((score + labscore))
+  maxscore=$((maxscore + labmaxscore))
+  scores-report "   Running score is $score out of $maxscore"
+  scorespostdata="course=$course&semester=$semester&studentnumber=$studentnumber&firstname=$firstname&lastname=$lastname&lab=1&score=$labscore&maxscore=$labmaxscore"
+  curl -s -A "Mozilla/4.0" -d "$scorespostdata" $labscoresURL || problem-report "Unable to post scores to website"
+fi
 
