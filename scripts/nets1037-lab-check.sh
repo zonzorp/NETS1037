@@ -284,7 +284,7 @@ if [[ $labnum =~ "2" ]]; then
       ;;
 # loghost checks the db and logfiles for received logs and firewall rule
     loghost )
-      mysqlrecordcount="$(sudo mysql -u root  <<< 'select count(*) from Syslog.SystemEvents;')"
+      mysqlrecordcount="$(sudo -S mysql -u root  <<< 'select count(*) from Syslog.SystemEvents;')"
       if [ "$mysqlrecordcount" ] && [ "$mysqlrecordcount" -gt 0 ]; then
         verbose-report "loghost mysql db has SystemEvents records"
         ((labscore+=10))
@@ -292,31 +292,31 @@ if [[ $labnum =~ "2" ]]; then
         problem-report "loghost SystemEvents table is empty"
       fi
       ((labmaxscore+=10))
-      if sudo ss -tulpn |grep -q 'udp.*0.0.0.0:514.*0.0.0.0:.*syslogd' ; then
+      if sudo -S ss -tulpn |grep -q 'udp.*0.0.0.0:514.*0.0.0.0:.*syslogd' ; then
         verbose-report "loghost rsyslog is listening to the network on 514/udp"
         ((labscore+=10))
       else
         problem-report "loghost rsyslog is not listening to 514/udp for syslog on the network"
       fi
       ((labmaxscore+=10))
-      if sudo ufw status 2>&1 |grep '514/udp.*ALLOW'; then
+      if sudo -S ufw status 2>&1 |grep '514/udp.*ALLOW'; then
         verbose-report "loghost ufw allows 514/udp"
         ((labscore+=5))
       else
         problem-report "loghost UFW is not allowing syslog traffic on 514/udp"
       fi
       ((labmaxscore+=5))
-      hostsinsyslog="$(sudo awk '{print $2}' /var/log/syslog|sort|uniq -c)"
-      hostsindb="$(sudo mysql -u root <<< 'select distinct FromHost, count(*) from Syslog.SystemEvents group by FromHost;')"
+      hostsinsyslog="$(sudo -S awk '{print $2}' /var/log/syslog|sort|uniq -c)"
+      hostsindb="$(sudo -S mysql -u root <<< 'select distinct FromHost, count(*) from Syslog.SystemEvents group by FromHost;')"
       for host in loghost mailhost webhost proxyhost nmshost; do
-        if "$(sudo grep -aicwq $host /var/log/syslog)"; then 
+        if "$(sudo -S grep -aicwq $host /var/log/syslog)"; then 
           verbose-report "loghost: $host found in /var/log/syslog"
           ((labscore+=5))
         else
           problem-report "loghost: $host not found in /var/log/syslog"
         fi
         ((labmaxscore+=5))
-        if [ "$(sudo mysql -u root <<< 'select distinct count(*) from Syslog.SystemEvents where FromHost like $host%;')" -gt 0 ]; then
+        if [ "$(sudo -S mysql -u root <<< 'select distinct count(*) from Syslog.SystemEvents where FromHost like $host%;')" -gt 0 ]; then
           verbose-report "loghost: $host has records in the SystemEvents table"
           ((labscore+=5))
         else
