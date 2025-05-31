@@ -17,10 +17,11 @@ datetime=$(date +"%Y-%m-%d@%H:%M:%S%p")
 logfile="/tmp/sc$datetime$$.log"
 course="NETS1037"
 case `date +%m` in
-01|02|03|04) semester="W`date +%y`";;
-05|06|07|08) semester="S`date +%y`";;
-09|10|11|12) semester="F`date +%y`";;
+  01|02|03|04) semester="W`date +%y`";;
+  05|06|07|08) semester="S`date +%y`";;
+  09|10|11|12) semester="F`date +%y`";;
 esac
+verbose="no"
 skipUpdate="no"
 ufwAlwaysOn="yes"
 scoreonly="no"
@@ -31,50 +32,6 @@ githubrepoURLprefix="$githubrepo"/raw/main
 scriptdir="$(dirname $0)"
 scriptname="$(basename $0)"
 
-#if [ "`hostname`" != "nmshost" ]; then
-#  echo "Hostname is `hostname`, but this script is only valid on nmshost"
-#  echo "You need to log into nmshost to use this script"
-#  exit 2
-#fi
-
-# retrieve function libraries from github and source them
-for script in nets1037-funcs.sh nets1037-grading-funcs.sh; do
-  if [ ! -f "$scriptdir"/$script ]; then
-    echo "Retrieving $script from github"
-    if ! wget -q -O "$scriptdir"/$script "$githubrepoURLprefix"/scripts/$script; then
-       echo "You need $script from the course github repo in order to use this script."
-       echo "Automatic retrieval of the file has failed. Are you online?"
-       exit 1
-    fi
-  fi
-  source "$scriptdir/$script"
-done
-
-# curl needed, install if necessary
-curl-check || exit 1
-
-############
-# Main
-############
-
-# start a new logfile and start it with date/time info
-date +"server-check running on %Y-%M-%D at %H:%M %p" >$logfile
-echo "$0 $@" >>$logfile
-
-#Checks if you can use sudo
-sudo-check
-
-# test if internet is reachable
-ping -c 1 8.8.8.8 >&/dev/null
-if [ $? -ne 0 ]; then
-	problem-report "Not connected to the internet. This script requires a functional IPV4 internet connection."
-	problem-report "Check that you are getting dhcp service on your first network interface (try 'ip a')."
-	problem-report "Check that you have internet service on your host computer (try 'ping 8.8.8.8' in a command window on the host computer)"
-	# leave the logfile in place for troubleshooting purposes
-	exit 1
-fi
-
-verbose="no"
 while [ $# -gt 0 ]; do
   case "$1" in
     -l | --lab)
@@ -111,15 +68,53 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+# retrieve function libraries from github and source them
+for script in nets1037-funcs.sh nets1037-grading-funcs.sh; do
+  if [ ! -f "$scriptdir"/$script ]; then
+    # echo "Retrieving $script from github"
+    if ! wget -q -O "$scriptdir"/$script "$githubrepoURLprefix"/scripts/$script; then
+       echo "You need $script from the course github repo in order to use this script." 1>&2
+       echo "Automatic retrieval of the file has failed. Are you online?" 1>&2
+       exit 1
+    fi
+  fi
+  source "$scriptdir/$script"
+done
+
+# curl needed, install if necessary
+curl-check || exit 1
+
+############
+# Main
+############
+
+# start a new logfile and start it with date/time info
+date +"server-check running on %Y-%M-%D at %H:%M %p" >$logfile
+echo "$0 $@" >>$logfile
+
+#Checks if you can use sudo
+sudo-check
+
+# test if internet is reachable
+ping -c 1 8.8.8.8 >&/dev/null
+if [ $? -ne 0 ]; then
+	problem-report "Not connected to the internet. This script requires a functional IPV4 internet connection."
+	problem-report "Check that you are getting dhcp service on your first network interface (try 'ip a')."
+	problem-report "Check that you have internet service on your host computer (try 'ping 8.8.8.8' in a command window on the host computer)"
+	# leave the logfile in place for troubleshooting purposes
+	exit 1
+fi
+
+
 if [ "$skipUpdate" = "no" ]; then
-  echo "Checking if script is up to date, please wait"
+  verbose-report "Checking if script is up to date, please wait"
   for script in $scriptname nets1037-funcs.sh nets1037-grading-funcs.sh; do
     wget -nv -O "$scriptdir"/$script-new "$githubrepoURLprefix"/scripts/$script >& /dev/null
     diff "$scriptdir"/$script "$scriptdir"/$script-new >& /dev/null
     if [ "$?" != "0" -a -s "$scriptdir"/$script-new ]; then
       mv "$scriptdir"/$script-new "$scriptdir"/$script
       chmod +x "$scriptdir"/$script
-      echo "$scriptdir"/$script updated
+      verbose-report "$scriptdir"/$script updated
       "$scriptdir"/$scriptname -s "$@"
       rm $logfile # this logfile is pointless, discard it
       exit
@@ -187,8 +182,8 @@ verbose-report "Host name: $hostname"
 if [[ $labnum =~ "1" ]]; then
   lab_header "01"
   if [ "`hostname`" != "nmshost" ]; then
-    echo "Hostname is `hostname`, but this script is only valid on nmshost"
-    echo "You need to log into nmshost to use this script"
+    problem-report "Hostname is `hostname`, but this script is only valid on nmshost"
+    problem-report "You need to log into nmshost to use this script"
     exit 2
   fi
 
@@ -279,7 +274,13 @@ if [[ $labnum =~ "2" ]]; then
       
       scp "$scriptdir/$scriptname" loghost:
       [ "$verbose" = "yes" ] && ssh loghost -- "$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 -v
-      ssh loghost -- "$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 --scoreonly | read loghostlabscore loghostlabmaxscore
+      ssh loghost -- "$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 --scoreonly | read label loghostlabscore loghostlabmaxscore
+      if [ "$label" != "Scores:" ]; then
+      	problem-report "Remote run of lab checks on loghost failed to produce correct output: '$label $loghostlabscore $loghostlabmaxscore'"
+       else
+         labscore=loghostlabscore
+	 labmaxscore=loghostlabmaxscore
+       fi
       ;;
 # loghost checks the db and logfiles for received logs and firewall rule
     loghost )
@@ -323,12 +324,14 @@ if [[ $labnum =~ "2" ]]; then
         fi
         ((labmaxscore+=5))
       done
+      echo "Scores: $labscore $labmaxscore"
+      exit
       ;;
   esac
 
   scores-report "Lab 02 score from loghost is $labscore out of $labmaxscore"
-  score=$((score + loghostlabscore))
-  maxscore=$((maxscore + loghostlabmaxscore))
+  score=$((score + labscore))
+  maxscore=$((maxscore + labmaxscore))
   scores-report "   Running score is $score out of $maxscore"
 #  scorespostdata="course=$course&semester=$semester&studentnumber=$studentnumber&firstname=$firstname&lastname=$lastname&lab=1&score=$labscore&maxscore=$labmaxscore"
 #  curl -s -A "Mozilla/4.0" -d "$scorespostdata" $labscoresURL || problem-report "Unable to post scores to website"
