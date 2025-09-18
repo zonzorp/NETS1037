@@ -14,7 +14,7 @@ $(date)
 
 score=0
 
-mysqlrecordcount="$(sudo mysql -u root  <<< 'select count(*) from Syslog.SystemEvents;')"
+mysqlrecordcount=$(sudo mysql -u root  <<< 'select count(*) from Syslog.SystemEvents;'|tail -1)
 if [ "$mysqlrecordcount" ] && [ "$mysqlrecordcount" -gt 0 ]; then
   echo "mysql db has SystemEvents records"
   ((score+=3))
@@ -34,16 +34,17 @@ else
   echo "UFW is not allowing syslog traffic on 514/udp"
 fi
 
-hostsinsyslog="$(sudo awk '{print $2}' /var/log/syslog|sort|uniq -c)"
-hostsindb="$(sudo mysql -u root <<< 'select distinct FromHost, count(*) from Syslog.SystemEvents group by FromHost;')"
+hostsinsyslog=$(sudo awk '{print $2}' /var/log/syslog|sort|uniq -c)
+hostsindb=$(sudo mysql -u root <<< 'select distinct FromHost, count(*) from Syslog.SystemEvents group by FromHost;')
 for host in loghost mailhost webhost proxyhost nmshost; do
-  if "$(sudo grep -aicwq $host /var/log/syslog)"; then 
+  if sudo grep -aicwq $host /var/log/syslog; then 
     echo "$host found in /var/log/syslog"
     ((score++))
   else
     echo "$host not found in /var/log/syslog"
   fi
-  if [ "$(sudo mysql -u root <<< 'select distinct count(*) from Syslog.SystemEvents where FromHost like $host%;')" -gt 0 ]; then
+#  if [ $(sudo mysql -u root <<< 'select count(*) from Syslog.SystemEvents where FromHost like ${host}%;'|tail -1) -gt 0 ]; then
+  if echo "$hostsindb" |grep -qw $host ; then
     echo "$host has records in the SystemEvents table"
     ((score+=3))
   else
