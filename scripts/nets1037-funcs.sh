@@ -44,7 +44,7 @@ Enabled: yes
 Types: deb
 URIs: https://pkgs.zabbly.com/incus/stable
 Suites: $(. /etc/os-release && echo "${VERSION_CODENAME}")
-Components: main                                       
+Components: main
 Architectures: $(dpkg --print-architecture)
 Signed-By: /etc/apt/keyrings/zabbly.asc
 EOF
@@ -92,7 +92,7 @@ function delete-incus-containers {
   for target in $(incus list -c n -f csv); do
     incus delete "$target" --force
   done
-  
+
   echoverbose "Deleting lan and mgmt networks"
   incus network delete lan 2>/dev/null
   incus network delete mgmt 2>/dev/null
@@ -307,6 +307,12 @@ EOF
 			return 1
 		fi
 	fi
+  if [ ! -s "$scriptdir/$target/$lab/$configfile" ]; then
+    echo "Download of required file $scriptdir/$target/$lab/$configfile unsuccessful."
+    rm "$scriptdir/$target/$lab/$configfile"
+    echo "Empty file removed - something seems to be wrong with $githubrepoURLprefix/$target/$lab/$configfile"
+    return 1
+  fi
 	# push config files to container, restarting services as needed
 	echoverbose "Pushing $configfile to $target"
 	if ! incus file push "$scriptdir/$target/$lab/$configfile" "$target/$configfile"; then

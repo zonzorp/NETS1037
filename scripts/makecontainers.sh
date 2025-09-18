@@ -28,6 +28,8 @@ startinghostnum=241
 remoteadmin="remoteadmin"
 numcontainers=1
 verbose=false
+checkdelay=2
+maxwaittime=60
 
 sudo-check
 
@@ -148,14 +150,23 @@ verbose:       $verbose
                 shift
             fi
             ;;
+        --maxwaittime )
+            if [ -z "$2" ]; then
+                error-exit "Need a name for the --maxwaittime option, default is $maxwaittime"
+            else
+                maxwaittime="$2"
+                shift
+            fi
+            ;;
         --nets1037 )
-	    nets1037=true
-	    ;;
+	          nets1037=true
+	          ;;
     esac
     shift
 done
 
 # Start of script task execution
+maxwaitcount=$(( maxwaittime / checkdelay ))
 
 # install incus if needed
 incus-install-check "$USER"
@@ -252,7 +263,16 @@ if ! incus info "$container" >&/dev/null ; then
     filepush "$container" "" etc/config/network ""
     filepush "$container" "" etc/config/system ""
     # wait for the interfaces to configure themselves
-    while ! incus list openwrt | grep -q eth2; do sleep 2; done
+    for ( waitcount=0; waitcount < maxwaitcount; waitcount++ ); do
+      if incus list "$container" | grep -q eth2; then
+        break
+      else
+        sleep $checkdelay
+      fi
+    done
+    if [ $waitcount -eq $maxwaitcount ]; then
+      error-exit "$container container did not fully initialize within $maxwaittime seconds."
+    fi
 fi
 
 # we want $numcontainers containers running
@@ -335,14 +355,23 @@ network:
 EOF
 	chmod 600 "$scriptdir/$container$netplanfile"
 	# wait for container networking to come up
-    while ! incus list "$container" | grep -q eth0; do sleep 2; done
+  for ( waitcount=0; waitcount < maxwaitcount; waitcount++ ); do
+    if incus list "$container" | grep -q eth0; then
+      break
+    else
+      sleep $checkdelay
+    fi
+  done
+  if [ $waitcount -eq $maxwaitcount ]; then
+    error-exit "$container container did not fully initialize within one minute."
+  fi
 	echoverbose "Pushing $netplanfile to $container"
 	incus file push "$scriptdir/$container$netplanfile" "$container$netplanfile"
     incus exec "$container" -- bash -c '[ -d /etc/cloud ] && echo "network: {config: disabled}" > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg'
     incus exec "$container" netplan apply
 	# wait for container networking to come up
     while ! incus list "$container" | grep -q eth1; do sleep 2; done
-	
+
     #update container /etc/hosts file
 	cat > $scriptdir/$container/etc/hosts <<EOF
 127.0.0.1	localhost
@@ -435,7 +464,7 @@ if [ "$nets1037" = "true" ]; then
 	  				continue
 	  			fi
 				# install config files from github repo
-				filepush "$container" 1 etc/rsyslog.conf rsyslog 
+				filepush "$container" 1 etc/rsyslog.conf rsyslog
 				;;
 		mailhost )
 			echoverbose "Doing $container specific setup"
