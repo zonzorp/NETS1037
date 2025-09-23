@@ -263,7 +263,7 @@ if ! incus info "$container" >&/dev/null ; then
     filepush "$container" "" etc/config/network ""
     filepush "$container" "" etc/config/system ""
     # wait for the interfaces to configure themselves
-    for ( waitcount=0; waitcount < maxwaitcount; waitcount++ ); do
+    for (( waitcount=0; waitcount < maxwaitcount; waitcount++ )); do
       if incus list "$container" | grep -q eth2; then
         break
       else
@@ -355,7 +355,7 @@ network:
 EOF
 	chmod 600 "$scriptdir/$container$netplanfile"
 	# wait for container networking to come up
-  for ( waitcount=0; waitcount < maxwaitcount; waitcount++ ); do
+  for (( waitcount=0; waitcount < maxwaitcount; waitcount++ )); do
     if incus list "$container" | grep -q eth0; then
       break
     else
