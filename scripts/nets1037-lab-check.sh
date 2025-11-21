@@ -200,7 +200,7 @@ if [[ $labnum =~ "1" ]]; then
 
   for host in pfsense loghost mailhost webhost proxyhost nmshost; do
     sshhost="$host$mgmt"
-    [ "$host" = "pfsense" ] && $remuser=admin || remuser=
+    [ "$host" = "pfsense" ] && remuser=admin@ || remuser=
     if ! ping -c 1 $sshhost >/dev/null; then
       problem-report "Unable to ping $sshhost"
       problem-report "Verify that $sshhost is up and can talk to the private network"
