@@ -333,6 +333,47 @@ if [[ $labnum =~ "2" ]]; then
 #  curl -s -A "Mozilla/4.0" -d "$scorespostdata" $labscoresURL || problem-report "Unable to post scores to website"
 fi
 
+if [[ $labnum =~ "7" ]]; then
+  lab_header "07"
+  labscore=0
+  labmaxscore=0
+
+  # retrieve the 3 web resources without using the UTM
+  unset http_proxy
+  if ! wget -q -O /tmp/proxylab$$.index.txt https://zonzorp.net ; then
+    problem-report "Failed to retrieve https://zonzorp.net without using a proxy"
+  else
+    verbose-report "Successfully retrieved https://zonzorp.net without using a proxy"
+  fi
+  # set the proxy to use the proxy and retrieve the 3 resources
+  export http_proxy=http://proxyhost.home.arpa:3128
+  if ! wget -O /tmp/proxylab$$.zindex.txt http://zonzorp.net 2>zindex.log ; then
+    problem-report "Failed to retrieve http://zonzorp.net using squid proxy"
+  else
+    verbose-report "Successfully retrieved http://zonzorp.net using squid proxy"
+    ((labscore+=20))
+  fi
+  ((labmaxscore+=20))
+  # compare the proxied results to the baseline results
+  if ! cmp /tmp/proxylab$$.index.txt /tmp/proxylab$$.zindex.txt 2>/dev/null ; then
+    problem-report "Failed to access a http://zonzorp.net using the squid proxy"
+    problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:3128 wget http://zonzorp.net' on the command line"
+  else
+    verbose-report "Successfully accessed http://zonzorp.net using the squid proxy"
+    ((labscore+=30))
+  fi
+  ((labmaxscore+=30))
+
+  rm /tmp/proxylab$$.*
+  
+  scores-report "Lab 07 score is $labscore out of $labmaxscore"
+  score=$((score + labscore))
+  maxscore=$((maxscore + labmaxscore))
+  scores-report "   Running score is $score out of $maxscore"
+fi
+
+
+
 if [[ $labnum =~ "8" ]]; then
   lab_header "08"
   labscore=0
