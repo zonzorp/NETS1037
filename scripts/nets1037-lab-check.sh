@@ -280,7 +280,7 @@ if [[ $labnum =~ "2" ]]; then
 # loghost checks the db and logfiles for received logs and firewall rule
     loghost )
       package_checks mailutils mysql-server rsyslog-mysql
-      which mysql >/dev/null && mysqlrecordcount="$(mysql -u root  <<< 'select count(*) from Syslog.SystemEvents;'|grep -v count)"
+      which mysql >/dev/null && mysqlrecordcount="$(mysql -N -u root  <<< 'select count(*) from Syslog.SystemEvents;')"
       if [ "$mysqlrecordcount" != "" ] && [ "$mysqlrecordcount" -gt 0 ]; then
         verbose-report "loghost mysql log database has logs in it"
         ((labscore+=10))
@@ -312,7 +312,7 @@ if [[ $labnum =~ "2" ]]; then
           problem-report "loghost: logs from $host not found in /var/log/syslog"
         fi
         ((labmaxscore+=5))
-        if which mysql >/dev/null && [ "$(mysql -u root <<< 'select count(*) from Syslog.SystemEvents where FromHost like \'$host%\';'|grep -v count)" -gt 0 ]; then
+        if which mysql >/dev/null && [ $(mysql -N -u root <<< "select count(*) from Syslog.SystemEvents where FromHost like '$host%';") -gt 0 ]; then
           verbose-report "loghost: logs from $host found in the mysql database"
           ((labscore+=5))
         else
