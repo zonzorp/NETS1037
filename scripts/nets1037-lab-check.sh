@@ -333,3 +333,92 @@ if [[ $labnum =~ "2" ]]; then
 #  curl -s -A "Mozilla/4.0" -d "$scorespostdata" $labscoresURL || problem-report "Unable to post scores to website"
 fi
 
+if [[ $labnum =~ "8" ]]; then
+  lab_header "08"
+  labscore=0
+  labmaxscore=0
+
+  # retrieve the 3 web resources without using the UTM
+  unset http_proxy
+  if ! wget -q -O /tmp/UTMlab$$.index.txt https://zonzorp.net ; then
+    problem-report "Failed to retrieve https://zonzorp.net without using a proxy"
+  else
+    verbose-report "Successfully retrieved https://zonzorp.net without using a proxy"
+    ((labscore+=3))
+  fi
+  ((labmaxscore+=3))
+  if ! wget -q -O /tmp/UTMlab$$.eicar.com.txt https://zonzorp.net/gc/eicar.com.txt ; then
+    problem-report "Failed to retrieve https://zonzorp.net/gc/eicar.com.txt without using a proxy"
+  else
+    verbose-report "Successfully retrieved https://zonzorp.net/gc/eicar.com.txt without using a proxy"
+    ((labscore+=3))
+  fi
+  ((labmaxscore+=3))
+  if ! wget -q -O /tmp/UTMlab$$.eicar.com.zip https://zonzorp.net/gc/eicar.com.zip; then
+    problem-report "Failed to retrieve https://zonzorp.net/gc/eicar.com.zip without using a proxy"
+  else
+    verbose-report "Successfully retrieved https://zonzorp.net/gc/eicar.com.zip without using a proxy"
+    ((labscore+=3))
+  fi
+  ((labmaxscore+=3))
+  
+  # set the proxy to use the UTM and retrieve the 3 resources
+  export http_proxy=http://proxyhost.home.arpa:8080
+  if ! wget -O /tmp/UTMlab$$.zindex.txt http://zonzorp.net 2>zindex.log ; then
+    problem-report "Failed to retrieve http://zonzorp.net using UTM"
+  else
+    verbose-report "Successfully retrieved http://zonzorp.net using UTM"
+    ((labscore+=3))
+  fi
+  ((labmaxscore+=3))
+  if ! wget -O /tmp/UTMlab$$.zeicar.txt http://zonzorp.net/gc/eicar.com.txt 2>zeicartxt.log; then
+    problem-report "Failed to retrieve http://zonzorp.net/gc/eicar.com.txt using UTM"
+  else
+    verbose-report "Successfully retrieved http://zonzorp.net/gc/eicar.com.txt using UTM"
+    ((labscore+=3))
+  fi
+  ((labmaxscore+=3))
+﻿  if ! wget -O /tmp/UTMlab$$.zeicar.zip http://zonzorp.net/gc/eicar.com.zip 2>zeicarzip.log; then
+    problem-report "Failed to retrieve http://zonzorp.net/gc/eicar.com.zip using UTM"
+  else
+    verbose-report "Successfully retrieved http://zonzorp.net/gc/eicar.com.zip using UTM"
+    ((labscore+=3))
+  fi
+  ((labmaxscore+=3))
+  
+  # compare the proxied results to the baseline results
+  if ! cmp /tmp/UTMlab$$.index.txt /tmp/UTMlab$$.zindex.txt 2>/dev/null; then
+    problem-report "Failed to access a http://zonzorp.net using the UTM"
+    problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://zonzorp.net' on the command line"
+  else
+    verbose-report "Successfully accessed http://zonzorp.net using the UTM"
+    ((labscore+=3))
+  fi
+  ((labmaxscore+=3))
+
+  if ! grep -aqi "eicar" /tmp/UTMlab$$.zeicar.txt 2>/dev/null; then
+    problem-report "Unable to properly block a detected virus using the UTM"
+    problem-report "Ensure your UTM is properly scanning content with clamav"
+    problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://zonzorp.net/gc/eicar.com.txt' on the command line"
+  else
+    verbose-report "Successfully blocked http://zonzorp.net/gc/eicar.com.txt as a virus using the UTM"
+    ((labscore+=5))
+  fi
+  ((labmaxscore+=5))
+
+  if ! grep -aqi "Banned File Extension" /tmp/UTMlab$$.zeicar.zip 2>/dev/null; then
+    problem-report "Unable to properly block a disallowed file extensions using the UTM"
+    problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://zonzorp.net/gc/eicar.com.zip' on the command line"
+  else
+    verbose-report "Successfully blocked http://zonzorp.net/gc/eicar.com.zip as a banned file extension using the UTM"
+    ((labscore+=5))
+  fi
+  ((labmaxscore+=5))
+
+  scores-report "Lab 08 score is $labscore out of $labmaxscore"
+  score=$((score + labscore))
+  maxscore=$((maxscore + labmaxscore))
+  scores-report "   Running score is $score out of $maxscore"
+# scorespostdata="course=$course&semester=$semester&studentnumber=$studentnumber&firstname=$firstname&lastname=$lastname&lab=1&score=$labscore&maxscore=$labmaxscore"
+#  curl -s -A "Mozilla/4.0" -d "$scorespostdata" $labscoresURL || problem-report "Unable to post scores to website"
+fi
