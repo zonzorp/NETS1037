@@ -266,7 +266,7 @@ if [[ $labnum =~ "2" ]]; then
       # run check on loghost remotely
 
       sshhost="loghost$mgmt"
-      scp -q "$scriptdir/$scriptname" "$scriptdir/nets1037-funcs.sh" "$scriptdir/nets1037-grading-funcs.sh" root@$sshhhost:/root
+      scp -q "$scriptdir/$scriptname" "$scriptdir/nets1037-funcs.sh" "$scriptdir/nets1037-grading-funcs.sh" root@$sshhost:/root
       [ "$verbose" = "yes" ] && ssh root@$sshhost -- /root/"$scriptname" "$firstname" "$lastname" "$studentnumber" -l 2 -v -s
       read label loghostlabscore loghostlabmaxscore <<< "$(ssh root@$sshhost -- /root/$scriptname $firstname $lastname $studentnumber -l 2 -s -o)"
       if [ "$label" != "Scores:" ]; then
