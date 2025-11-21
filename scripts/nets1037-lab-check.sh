@@ -281,7 +281,7 @@ if [[ $labnum =~ "2" ]]; then
     loghost )
       package_checks mailutils mysql-server rsyslog-mysql
       which mysql >/dev/null && mysqlrecordcount="$(mysql -u root  <<< 'select count(*) from Syslog.SystemEvents;')"
-      if [ "$mysqlrecordcount" ] && [ "$mysqlrecordcount" -gt 0 ]; then
+      if [ "$mysqlrecordcount" != "" ] && [ "$mysqlrecordcount" -gt 0 ]; then
         verbose-report "loghost mysql log database has logs in it"
         ((labscore+=10))
       else
