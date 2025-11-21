@@ -203,7 +203,7 @@ if [[ $labnum =~ "1" ]]; then
     problem-report "Refer to the instructions for the lab to ensure you have created an account named $firstname"
     exit 3
   else
-    ((labscore))+=10
+    ((labscore+=10))
   fi
   ((labmaxscore+=10))
 
