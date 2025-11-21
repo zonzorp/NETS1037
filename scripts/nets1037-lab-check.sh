@@ -279,7 +279,7 @@ if [[ $labnum =~ "2" ]]; then
       ;;
 # loghost checks the db and logfiles for received logs and firewall rule
     loghost )
-      package_checks mailutils mysql-server rsyslog-mysql
+      package_checks "mailutils mysql-server rsyslog-mysql"
       which mysql >/dev/null && mysqlrecordcount="$(mysql -N -u root  <<< 'select count(*) from Syslog.SystemEvents;')"
       if [ "$mysqlrecordcount" != "" ] && [ "$mysqlrecordcount" -gt 0 ]; then
         verbose-report "loghost mysql log database has logs in it"
