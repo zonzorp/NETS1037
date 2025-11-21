@@ -295,7 +295,7 @@ if [[ $labnum =~ "2" ]]; then
         problem-report "loghost rsyslog is not listening to 514/udp for syslog on the network"
       fi
       ((labmaxscore+=10))
-      if ufw status 2>&1 |grep '514/udp.*ALLOW'; then
+      if ufw status 2>&1 |grep -q '514/udp.*ALLOW'; then
         verbose-report "loghost ufw allows 514/udp"
         ((labscore+=5))
       else
