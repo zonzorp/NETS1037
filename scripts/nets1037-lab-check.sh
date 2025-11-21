@@ -194,9 +194,18 @@ if [[ $labnum =~ "1" ]]; then
     problem-report "You need to log into nmshost to use this script"
     exit 2
   fi
-
+  
   labscore=0
   labmaxscore=0
+
+  if [ "$USER" != "$firstname" ]; then
+    problem-report "You should be working from your own user account, not the student account or the root account"
+    problem-report "Refer to the instructions for the lab to ensure you have created an account named $firstname"
+    exit 3
+  else
+    ((labscore))+=10
+  fi
+  ((labmaxscore+=10))
 
   for host in pfsense loghost mailhost webhost proxyhost nmshost; do
     sshhost="$host$mgmt"
@@ -214,9 +223,9 @@ if [[ $labnum =~ "1" ]]; then
       problem-report "Verify that $sshhost is up and providing ssh service"
     else
       verbose-report "$remuser$sshhost is accessible using ssh"
-      ((labscore+=8))
+      ((labscore+=5))
     fi
-    ((labmaxscore+=8))
+    ((labmaxscore+=5))
     if ! ssh $remuser$sshhost -- ping -c 1 google.com >/dev/null; then
       problem-report "Unable to ping google.com from $remuser$sshhost"
       problem-report "Verify that $sshhost is up and can talk to the internet"
