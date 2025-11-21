@@ -11,6 +11,11 @@ $(date)
 
 score=0
 
+if ! mysql -V 2>/dev/null; then
+    echo "MySQL not installed, not checking lab"
+    exit 1
+fi
+
 mysqlrecordcount="$(sudo mysql -u root  <<< 'select count(*) from Syslog.SystemEvents;')"
 if [ "$mysqlrecordcount" ] && [ "$mysqlrecordcount" -gt 0 ]; then
   echo "mysql db has SystemEvents records"
@@ -40,7 +45,8 @@ for host in loghost mailhost webhost proxyhost nmshost; do
   else
     echo "$host not found in /var/log/syslog"
   fi
-  if [ "$(sudo mysql -u root <<< 'select distinct count(*) from Syslog.SystemEvents where FromHost like $host%;')" -gt 0 ]; then
+#  if [ "$(sudo mysql -u root <<< 'select distinct count(*) from Syslog.SystemEvents where FromHost like $host%;')" -gt 0 ]; then
+  if echo "$hostsindb" |grep -qw "^$host" ; then
     echo "$host has records in the SystemEvents table"
     ((score+=3))
   else

@@ -1,7 +1,4 @@
 #!/bin/bash
-# loghost check script for end of lab to create loghost
-
-#!/bin/bash
 
 username="$(id -un)"
 mid="$(hostnamectl |grep -i machine)"
@@ -34,8 +31,8 @@ else
   echo "UFW is not allowing syslog traffic on 514/udp"
 fi
 
-hostsinsyslog=$(sudo awk '{print $2}' /var/log/syslog|sort|uniq -c)
-hostsindb=$(sudo mysql -u root <<< 'select distinct FromHost, count(*) from Syslog.SystemEvents group by FromHost;')
+hostsinsyslog="$(sudo awk '{print $2}' /var/log/syslog|sort|uniq -c)"
+hostsindb="$(sudo mysql -u root <<< 'select distinct FromHost, count(*) from Syslog.SystemEvents group by FromHost;')"
 for host in loghost mailhost webhost proxyhost nmshost; do
   if sudo grep -aicwq $host /var/log/syslog; then 
     echo "$host found in /var/log/syslog"
