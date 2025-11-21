@@ -372,8 +372,6 @@ if [[ $labnum =~ "7" ]]; then
   scores-report "   Running score is $score out of $maxscore"
 fi
 
-
-
 if [[ $labnum =~ "8" ]]; then
   lab_header "08"
   labscore=0
