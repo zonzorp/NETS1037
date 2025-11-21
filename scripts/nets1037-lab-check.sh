@@ -200,6 +200,7 @@ if [[ $labnum =~ "1" ]]; then
 
   for host in pfsense loghost mailhost webhost proxyhost nmshost; do
     sshhost="$host$mgmt"
+    [ "$host" = "pfsense" ] && $remuser=admin || remuser=
     if ! ping -c 1 $sshhost >/dev/null; then
       problem-report "Unable to ping $sshhost"
       problem-report "Verify that $sshhost is up and can talk to the private network"
@@ -208,19 +209,19 @@ if [[ $labnum =~ "1" ]]; then
       ((labscore+=5))
     fi
     ((labmaxscore+=5))
-    if ! ssh $sshhost true >/dev/null; then
-      problem-report "Unable to access $sshhost"
+    if ! ssh $remuser$sshhost true >/dev/null; then
+      problem-report "Unable to access $remuser$sshhost"
       problem-report "Verify that $sshhost is up and providing ssh service"
     else
-      verbose-report "$sshhost is accessible using ssh"
+      verbose-report "$remuser$sshhost is accessible using ssh"
       ((labscore+=8))
     fi
     ((labmaxscore+=8))
-    if ! ssh $sshhost -- ping -c 1 google.com >/dev/null; then
-      problem-report "Unable to ping google.com from $sshhost"
+    if ! ssh $remuser$sshhost -- ping -c 1 google.com >/dev/null; then
+      problem-report "Unable to ping google.com from $remuser$sshhost"
       problem-report "Verify that $sshhost is up and can talk to the internet"
     else
-      verbose-report "$sshhost can ping google.com"
+      verbose-report "$remuser$sshhost can ping google.com"
       ((labscore+=5))
     fi
     ((labmaxscore+=5))
