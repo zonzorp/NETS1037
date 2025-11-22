@@ -416,7 +416,7 @@ if [[ $labnum =~ "8" ]]; then
   ((labmaxscore+=3))
 
   # retrieve the 3 web resources using the UTM
-  http_proxy=http://proxyhost:8080
+  export http_proxy=http://proxyhost:8080
   if ! wget -q -O /tmp/UTMlab$$.index2.html webhost ; then
     problem-report "Failed to retrieve webhost using the UTM"
   else
