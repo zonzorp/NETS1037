@@ -462,7 +462,7 @@ if [[ $labnum =~ "8" ]]; then
   fi
   ((labmaxscore+=3))
 
-  if ! grep -aqi "errortext.*EICAR" /tmp/UTMlab$$.eicar2.txt 2>/dev/null ; then
+  if ! grep -aqi "errortext.*eicar" /tmp/UTMlab$$.eicar2.txt 2>/dev/null ; then
     problem-report "Unable to properly block a detected virus using the UTM"
     problem-report "Ensure your UTM is properly scanning content with clamav"
     problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://webhost/eicar.txt' on the command line"
@@ -472,7 +472,7 @@ if [[ $labnum =~ "8" ]]; then
   fi
   ((labmaxscore+=5))
   
-  if ! grep -aqi "errortext.*EICAR" /tmp/UTMlab$$.eicar2.tgz 2>/dev/null ; then
+  if ! grep -aqi "errortext.*eicar" /tmp/UTMlab$$.eicar2.tgz 2>/dev/null ; then
     problem-report "Unable to properly block a detected virus using the UTM"
     problem-report "Ensure your UTM is properly scanning content with clamav"
     problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://webhost/eicar.tgz' on the command line"
