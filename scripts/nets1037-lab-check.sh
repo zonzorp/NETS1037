@@ -347,7 +347,7 @@ if [[ $labnum =~ "7" ]]; then
   fi
   # set the proxy to use the proxy and retrieve the 3 resources
   export http_proxy=http://proxyhost.home.arpa:3128
-  if ! wget -O /tmp/proxylab$$.zindex.txt http://zonzorp.net 2>zindex.log ; then
+  if ! wget -q -O /tmp/proxylab$$.zindex.txt http://zonzorp.net ; then
     problem-report "Failed to retrieve http://zonzorp.net using squid proxy"
   else
     verbose-report "Successfully retrieved http://zonzorp.net using squid proxy"
@@ -379,64 +379,90 @@ if [[ $labnum =~ "8" ]]; then
 
   # retrieve the 3 web resources without using the UTM
   unset http_proxy
-  if ! wget -q -O /tmp/UTMlab$$.index.txt https://zonzorp.net ; then
-    problem-report "Failed to retrieve https://zonzorp.net without using a proxy"
+  if ! wget -q -O /tmp/UTMlab$$.index.html webhost ; then
+    problem-report "Failed to retrieve webhost without using a proxy"
   else
-    verbose-report "Successfully retrieved https://zonzorp.net without using a proxy"
+    verbose-report "Successfully retrieved webhost without using a proxy"
     ((labscore+=3))
   fi
   ((labmaxscore+=3))
-  if ! wget -q -O /tmp/UTMlab$$.eicar.com.txt https://zonzorp.net/gc/eicar.com.txt ; then
-    problem-report "Failed to retrieve https://zonzorp.net/gc/eicar.com.txt without using a proxy"
+  if ! wget -q -O /tmp/UTMlab$$.eicar.txt webhost/eicar.txt ; then
+    problem-report "Failed to retrieve webhost/eicar.txt without using a proxy"
   else
-    verbose-report "Successfully retrieved https://zonzorp.net/gc/eicar.com.txt without using a proxy"
+    verbose-report "Successfully retrieved webhost/eicar.txt without using a proxy"
     ((labscore+=3))
   fi
   ((labmaxscore+=3))
-  if ! wget -q -O /tmp/UTMlab$$.eicar.com.zip https://zonzorp.net/gc/eicar.com.zip ; then
-    problem-report "Failed to retrieve https://zonzorp.net/gc/eicar.com.zip without using a proxy"
+  if ! wget -q -O /tmp/UTMlab$$.eicar.aa webhost/eicar.aa ; then
+    problem-report "Failed to retrieve webhost/eicar.aa without using a proxy"
   else
-    verbose-report "Successfully retrieved https://zonzorp.net/gc/eicar.com.zip without using a proxy"
+    verbose-report "Successfully retrieved webhost/eicar.aa without using a proxy"
+    ((labscore+=3))
+  fi
+  ((labmaxscore+=3))
+  if ! wget -q -O /tmp/UTMlab$$.eicar.tgz webhost/eicar.tgz ; then
+    problem-report "Failed to retrieve webhost/eicar.tgz without using a proxy"
+  else
+    verbose-report "Successfully retrieved webhost/eicar.tgz without using a proxy"
+    ((labscore+=3))
+  fi
+  ((labmaxscore+=3))
+  if ! wget -q -O /tmp/UTMlab$$.eicar.zip webhost/eicar.zip ; then
+    problem-report "Failed to retrieve webhost/eicar.zip without using a proxy"
+  else
+    verbose-report "Successfully retrieved webhost/eicar.zip without using a proxy"
     ((labscore+=3))
   fi
   ((labmaxscore+=3))
 
-  # set the proxy to use the UTM and retrieve the 3 resources
-  export http_proxy=http://proxyhost.home.arpa:8080
-  if ! wget -O /tmp/UTMlab$$.zindex.txt http://zonzorp.net 2>zindex.log ; then
-    problem-report "Failed to retrieve http://zonzorp.net using UTM"
+  # retrieve the 3 web resources using the UTM
+  unset http_proxy
+  if ! wget -q -O /tmp/UTMlab$$.index2.html webhost ; then
+    problem-report "Failed to retrieve webhost using the UTM"
   else
-    verbose-report "Successfully retrieved http://zonzorp.net using UTM"
+    verbose-report "Successfully retrieved webhost using the UTM"
     ((labscore+=3))
   fi
   ((labmaxscore+=3))
-  if ! wget -O /tmp/UTMlab$$.zeicar.txt http://zonzorp.net/gc/eicar.com.txt 2>zeicartxt.log ; then
-    problem-report "Failed to retrieve http://zonzorp.net/gc/eicar.com.txt using UTM"
+  if ! wget -q -O /tmp/UTMlab$$.eicar2.txt webhost/eicar.txt ; then
+    problem-report "Failed to retrieve webhost/eicar.txt using the UTM"
   else
-    verbose-report "Successfully retrieved http://zonzorp.net/gc/eicar.com.txt using UTM"
+    verbose-report "Successfully retrieved webhost/eicar.txt using the UTM"
     ((labscore+=3))
   fi
   ((labmaxscore+=3))
-
-  if ! wget -O /tmp/UTMlab$$.zeicar.zip http://zonzorp.net/gc/eicar.com.zip 2>zeicarzip.log ; then
-    problem-report "Failed to retrieve http://zonzorp.net/gc/eicar.com.txt using UTM"
+  if ! wget -q -O /tmp/UTMlab$$.eicar2.aa webhost/eicar.aa ; then
+    problem-report "Failed to retrieve webhost/eicar.aa using the UTM"
   else
-    verbose-report "Successfully retrieved http://zonzorp.net/gc/eicar.com.txt using UTM"
+    verbose-report "Successfully retrieved webhost/eicar.aa using the UTM"
     ((labscore+=3))
   fi
   ((labmaxscore+=3))
-  
+  if ! wget -q -O /tmp/UTMlab$$.eicar2.tgz webhost/eicar.tgz ; then
+    problem-report "Failed to retrieve webhost/eicar.tgz using the UTM"
+  else
+    verbose-report "Successfully retrieved webhost/eicar.tgz using the UTM"
+    ((labscore+=3))
+  fi
+  ((labmaxscore+=3))
+  if ! wget -q -O /tmp/UTMlab$$.eicar2.zip webhost/eicar.zip ; then
+    problem-report "Failed to retrieve webhost/eicar.zip using the UTM"
+  else
+    verbose-report "Successfully retrieved webhost/eicar.zip using the UTM"
+    ((labscore+=3))
+  fi
+  ((labmaxscore+=3))
   # compare the proxied results to the baseline results
-  if ! cmp /tmp/UTMlab$$.index.txt /tmp/UTMlab$$.zindex.txt 2>/dev/null ; then
-    problem-report "Failed to access a http://zonzorp.net using the UTM"
-    problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://zonzorp.net' on the command line"
+  if ! cmp /tmp/UTMlab$$.index.txt /tmp/UTMlab$$.index2.txt 2>/dev/null ; then
+    problem-report "Failed to access a http://webhost using the UTM"
+    problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://webhost' on the command line"
   else
-    verbose-report "Successfully accessed http://zonzorp.net using the UTM"
+    verbose-report "Successfully accessed http://webhost using the UTM"
     ((labscore+=3))
   fi
   ((labmaxscore+=3))
 
-  if ! grep -aqi "Win.Test.EICAR_HDB-1" /tmp/UTMlab$$.zeicar.txt 2>/dev/null ; then
+  if ! grep -aqi "Win.Test.EICAR_HDB-1" /tmp/UTMlab$$.eicar2.txt 2>/dev/null ; then
     problem-report "Unable to properly block a detected virus using the UTM"
     problem-report "Ensure your UTM is properly scanning content with clamav"
     problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://zonzorp.net/gc/eicar.com.txt' on the command line"
@@ -446,7 +472,7 @@ if [[ $labnum =~ "8" ]]; then
   fi
   ((labmaxscore+=5))
 
-  if ! grep -aqi "Banned File Extension" /tmp/UTMlab$$.zeicar.zip 2>/dev/null ; then
+  if ! grep -aqi "Banned File Extension" /tmp/UTMlab$$.eicar2.zip 2>/dev/null ; then
     problem-report "Unable to properly block a disallowed file extensions using the UTM"
     problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://zonzorp.net/gc/eicar.com.zip' on the command line"
   else
