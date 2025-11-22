@@ -377,7 +377,7 @@ if [[ $labnum =~ "8" ]]; then
   labscore=0
   labmaxscore=0
 
-  # retrieve the 3 web resources without using the UTM
+  # retrieve the 5 URLs without using the UTM (15%)
   unset http_proxy
   if ! wget -q -O /tmp/UTMlab$$.index.html webhost ; then
     problem-report "Failed to retrieve webhost without using a proxy"
@@ -415,7 +415,7 @@ if [[ $labnum =~ "8" ]]; then
   fi
   ((labmaxscore+=3))
 
-  # retrieve the 3 web resources using the UTM
+  # retrieve the 5 URLs using the UTM (15%)
   export http_proxy=http://proxyhost:8080
   if ! wget -q -O /tmp/UTMlab$$.index2.html webhost ; then
     problem-report "Failed to retrieve webhost using the UTM"
@@ -452,15 +452,16 @@ if [[ $labnum =~ "8" ]]; then
     ((labscore+=3))
   fi
   ((labmaxscore+=3))
-  # compare the proxied results to the baseline results
+  
+  # compare the proxied results to the baseline results (70%)
   if ! cmp /tmp/UTMlab$$.index.html /tmp/UTMlab$$.index2.html 2>/dev/null ; then
     problem-report "Failed to access a http://webhost using the UTM"
     problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://webhost' on the command line"
   else
     verbose-report "Successfully accessed http://webhost using the UTM"
-    ((labscore+=3))
+    ((labscore+=10))
   fi
-  ((labmaxscore+=3))
+  ((labmaxscore+=10))
 
   if ! grep -aqi "errortext.*eicar" /tmp/UTMlab$$.eicar2.txt 2>/dev/null ; then
     problem-report "Unable to properly block a detected virus using the UTM"
@@ -468,9 +469,9 @@ if [[ $labnum =~ "8" ]]; then
     problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://webhost/eicar.txt' on the command line"
   else
     verbose-report "Successfully blocked http://webhost/eicar.txt as a virus using the UTM"
-    ((labscore+=5))
+    ((labscore+=20))
   fi
-  ((labmaxscore+=5))
+  ((labmaxscore+=20))
   
   if ! grep -aqi "errortext.*eicar" /tmp/UTMlab$$.eicar2.tgz 2>/dev/null ; then
     problem-report "Unable to properly block a detected virus using the UTM"
@@ -478,18 +479,18 @@ if [[ $labnum =~ "8" ]]; then
     problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://webhost/eicar.tgz' on the command line"
   else
     verbose-report "Successfully blocked http://webhost/eicar.tgz as an archive that contains a virus using the UTM"
-    ((labscore+=5))
+    ((labscore+=20))
   fi
-  ((labmaxscore+=5))
+  ((labmaxscore+=20))
 
   if ! grep -aqi "Banned File Extension" /tmp/UTMlab$$.eicar2.zip 2>/dev/null ; then
     problem-report "Unable to properly block a disallowed file extensions using the UTM"
     problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://webhost/eicar.zip' on the command line"
   else
     verbose-report "Successfully blocked http://webhost/eicar.zip as a banned file extension using the UTM"
-    ((labscore+=5))
+    ((labscore+=20))
   fi
-  ((labmaxscore+=5))
+  ((labmaxscore+=20))
 
   rm /tmp/UTMlab$$.*
   
