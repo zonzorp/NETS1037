@@ -297,11 +297,11 @@ if [[ $labnum =~ "2" ]]; then
       ((labmaxscore+=10))
       if ufw status 2>&1 |grep -q '514/udp.*ALLOW'; then
         verbose-report "loghost ufw allows 514/udp"
-        ((labscore+=5))
+        ((labscore+=10))
       else
         problem-report "loghost UFW is not allowing syslog traffic on 514/udp"
       fi
-      ((labmaxscore+=5))
+      ((labmaxscore+=10))
       # hostsinsyslog="$(awk '{print $2}' /var/log/syslog|sort|uniq -c)"
       # which mysql >/dev/null && hostsindb="$(mysql -u root <<< 'select distinct FromHost, count(*) from Syslog.SystemEvents group by FromHost;')"
       for host in loghost mailhost webhost proxyhost nmshost; do
@@ -314,11 +314,11 @@ if [[ $labnum =~ "2" ]]; then
         ((labmaxscore+=5))
         if which mysql >/dev/null && [ $(mysql -N -u root <<< "select count(*) from Syslog.SystemEvents where FromHost like '$host%';") -gt 0 ]; then
           verbose-report "loghost: logs from $host found in the mysql database"
-          ((labscore+=5))
+          ((labscore+=9))
         else
           problem-report "loghost: logs from $host not found in the mysql database"
         fi
-        ((labmaxscore+=5))
+        ((labmaxscore+=9))
       done
       [ "$scoreonly" = "yes" ] && echo "Scores: $labscore $labmaxscore"
       exit
