@@ -453,7 +453,7 @@ if [[ $labnum =~ "8" ]]; then
   fi
   ((labmaxscore+=3))
   # compare the proxied results to the baseline results
-  if ! cmp /tmp/UTMlab$$.index.txt /tmp/UTMlab$$.index2.txt 2>/dev/null ; then
+  if ! cmp /tmp/UTMlab$$.index.html /tmp/UTMlab$$.index2.html 2>/dev/null ; then
     problem-report "Failed to access a http://webhost using the UTM"
     problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://webhost' on the command line"
   else
@@ -462,21 +462,31 @@ if [[ $labnum =~ "8" ]]; then
   fi
   ((labmaxscore+=3))
 
-  if ! grep -aqi "Win.Test.EICAR_HDB-1" /tmp/UTMlab$$.eicar2.txt 2>/dev/null ; then
+  if ! grep -aqi "errortext.*EICAR" /tmp/UTMlab$$.eicar2.txt 2>/dev/null ; then
     problem-report "Unable to properly block a detected virus using the UTM"
     problem-report "Ensure your UTM is properly scanning content with clamav"
-    problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://zonzorp.net/gc/eicar.com.txt' on the command line"
+    problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://webhost/eicar.txt' on the command line"
   else
-    verbose-report "Successfully blocked http://zonzorp.net/gc/eicar.com.txt as a virus using the UTM"
+    verbose-report "Successfully blocked http://webhost/eicar.txt as a virus using the UTM"
+    ((labscore+=5))
+  fi
+  ((labmaxscore+=5))
+  
+  if ! grep -aqi "errortext.*EICAR" /tmp/UTMlab$$.eicar2.tgz 2>/dev/null ; then
+    problem-report "Unable to properly block a detected virus using the UTM"
+    problem-report "Ensure your UTM is properly scanning content with clamav"
+    problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://webhost/eicar.tgz' on the command line"
+  else
+    verbose-report "Successfully blocked http://webhost/eicar.tgz as an archive that contains a virus using the UTM"
     ((labscore+=5))
   fi
   ((labmaxscore+=5))
 
   if ! grep -aqi "Banned File Extension" /tmp/UTMlab$$.eicar2.zip 2>/dev/null ; then
     problem-report "Unable to properly block a disallowed file extensions using the UTM"
-    problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://zonzorp.net/gc/eicar.com.zip' on the command line"
+    problem-report "Diagnose using 'http_proxy=http://proxyhost.home.arpa:8080 wget http://webhost/eicar.zip' on the command line"
   else
-    verbose-report "Successfully blocked http://zonzorp.net/gc/eicar.com.zip as a banned file extension using the UTM"
+    verbose-report "Successfully blocked http://webhost/eicar.zip as a banned file extension using the UTM"
     ((labscore+=5))
   fi
   ((labmaxscore+=5))
